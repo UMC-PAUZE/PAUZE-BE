@@ -1,0 +1,10 @@
+# 의존성 디렉터리
+node_modules/
+
+# dotenv 환경 변수 파일
+.env
+.env.*
+/src/generated/prisma
+
+# 빌드 결과물
+dist/
