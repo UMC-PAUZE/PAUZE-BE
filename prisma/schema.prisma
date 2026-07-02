@@ -6,3 +6,25 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  uid                   String    @id @default(uuid()) @db.Char(36)
+  email                 String    @unique @db.VarChar(255)
+  nickname              String    @db.VarChar(255)
+  profileImageUrl       String?   @map("profile_image_url") @db.Text
+  profileS3Key          String?   @map("profile_s3_key") @db.VarChar(255)
+  reminderAlarmActive   Boolean   @default(false) @map("reminder_alarm_active")
+  sensitiveAlarmActive  Boolean   @default(false) @map("sensitive_alarm_active")
+  curationAlarmActive   Boolean   @default(false) @map("curation_alarm_active")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime? @updatedAt @map("updated_at")
+  pushToken             String?   @map("push_token") @db.VarChar(255)
+  role                  Role      @default(USER)
+
+  @@map("users")
+}
