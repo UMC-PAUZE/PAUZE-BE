@@ -17,6 +17,7 @@ import {
   saveRefreshToken,
 } from "../../../common/utils/redis.util.js";
 import type {
+  AuthMeResultDto,
   AuthTokenResultDto,
   AuthUserDto,
   LocalLoginRequestDto,
@@ -347,6 +348,30 @@ export class AuthService {
     return {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
+    };
+  }
+
+  async getMe(uid: string): Promise<AuthMeResultDto> {
+    const user = await prisma.user.findUnique({
+      where: { uid },
+      include: { oauths: true },
+    });
+
+    if (!user) {
+      throw new AppError({
+        code: AUTH_CODES.ME_NOT_FOUND,
+        message: AUTH_MESSAGES.ME_NOT_FOUND,
+        statusCode: 404,
+      });
+    }
+
+    return {
+      uid: user.uid,
+      email: user.email,
+      nickname: user.nickname,
+      birth: formatBirthDate(user.birth),
+      role: user.role,
+      socialTypes: user.oauths.map((oauth) => oauth.socialType),
     };
   }
 }
