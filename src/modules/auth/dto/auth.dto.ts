@@ -42,3 +42,12 @@ export interface RefreshTokenResultDto {
   accessToken: string;
   refreshToken: string;
 }
+
+export interface AuthMeResultDto {
+  uid: string;
+  email: string;
+  nickname: string;
+  birth: string;
+  role: string;
+  socialTypes: string[];
+}

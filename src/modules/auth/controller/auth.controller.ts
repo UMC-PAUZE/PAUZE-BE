@@ -1,15 +1,21 @@
+import type { Request as ExpressRequest } from "express";
 import {
   Body,
   Controller,
+  Get,
   Post,
+  Request,
   Response,
   Route,
+  Security,
   SuccessResponse,
   Tags,
 } from "tsoa";
 import { success } from "../../../common/responses/response.js";
 import type { ApiSuccessResponse } from "../../../common/responses/response.js";
+import { AppError } from "../../../common/errors/app.error.js";
 import type {
+  AuthMeResultDto,
   AuthTokenResultDto,
   LocalLoginRequestDto,
   LocalSignupRequestDto,
@@ -62,5 +68,29 @@ export class AuthController extends Controller {
       AUTH_MESSAGES.REFRESH_SUCCESS,
       result
     );
+  }
+
+  /**
+   * 로그인 테스트용 — access token으로 현재 사용자 정보 조회
+   */
+  @Get("me")
+  @Security("bearer")
+  @SuccessResponse(200, "OK")
+  @Response(401, "Unauthorized")
+  @Response(404, "Not Found")
+  public async getMe(
+    @Request() request: ExpressRequest
+  ): Promise<ApiSuccessResponse<AuthMeResultDto>> {
+    const uid = request.user?.uid;
+    if (!uid) {
+      throw new AppError({
+        code: "AUTH_UNAUTHORIZED_401",
+        message: "인증이 필요합니다.",
+        statusCode: 401,
+      });
+    }
+
+    const result = await authService.getMe(uid);
+    return success(AUTH_CODES.ME_SUCCESS, AUTH_MESSAGES.ME_SUCCESS, result);
   }
 }

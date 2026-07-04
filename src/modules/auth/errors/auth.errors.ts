@@ -8,6 +8,8 @@ export const AUTH_CODES = {
   LOGIN_FAILED: "AUTH_LOGIN_FAILED_401",
   REFRESH_SUCCESS: "AUTH_REFRESH_SUCCESS",
   REFRESH_INVALID: "AUTH_REFRESH_INVALID_401",
+  ME_SUCCESS: "AUTH_ME_SUCCESS",
+  ME_NOT_FOUND: "AUTH_ME_NOT_FOUND_404",
 } as const;
 
 export const AUTH_MESSAGES = {
@@ -21,4 +23,6 @@ export const AUTH_MESSAGES = {
   LOGIN_FAILED: "이메일 또는 비밀번호가 올바르지 않습니다.",
   REFRESH_SUCCESS: "토큰 갱신에 성공했습니다.",
   REFRESH_INVALID: "유효하지 않은 refresh token입니다.",
+  ME_SUCCESS: "사용자 정보 조회에 성공했습니다.",
+  ME_NOT_FOUND: "사용자를 찾을 수 없습니다.",
 } as const;
