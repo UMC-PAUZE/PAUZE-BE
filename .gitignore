@@ -11,3 +11,6 @@ dist/
 
 # 맥 파일
 .DS_Store
+
+# Cursor
+.cursor/
