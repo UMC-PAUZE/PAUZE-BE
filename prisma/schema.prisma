@@ -12,19 +12,68 @@ enum Role {
   ADMIN
 }
 
+enum SocialType {
+  KAKAO
+  LOCAL
+}
+
+enum TermName {
+  NONE
+}
+
 model User {
-  uid                   String    @id @default(uuid()) @db.Char(36)
-  email                 String    @unique @db.VarChar(255)
-  nickname              String    @db.VarChar(255)
-  profileImageUrl       String?   @map("profile_image_url") @db.Text
-  profileS3Key          String?   @map("profile_s3_key") @db.VarChar(255)
-  reminderAlarmActive   Boolean   @default(false) @map("reminder_alarm_active")
-  sensitiveAlarmActive  Boolean   @default(false) @map("sensitive_alarm_active")
-  curationAlarmActive   Boolean   @default(false) @map("curation_alarm_active")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime? @updatedAt @map("updated_at")
-  pushToken             String?   @map("push_token") @db.VarChar(255)
-  role                  Role      @default(USER)
+  uid                   String     @id @default(uuid()) @db.Char(36)
+  email                 String     @unique @db.VarChar(255)
+  nickname              String     @db.VarChar(255)
+  profileImageUrl       String?    @map("profile_image_url") @db.Text
+  profileS3Key          String?    @map("profile_s3_key") @db.VarChar(255)
+  reminderAlarmActive   Boolean    @default(true) @map("reminder_alarm_active")
+  sensitiveAlarmActive  Boolean    @default(true) @map("sensitive_alarm_active")
+  curationAlarmActive   Boolean    @default(true) @map("curation_alarm_active")
+  birth                 DateTime   @map("birth") @db.Date
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime?  @updatedAt @map("updated_at")
+  pushToken             String?    @map("push_token") @db.VarChar(255)
+  role                  Role       @default(USER)
+  oauths                Oauth[]
+  userTerms             UserTerm[]
 
   @@map("users")
+}
+
+model Oauth {
+  oauthId    BigInt     @id @default(autoincrement()) @map("oauth_id")
+  uid        String     @db.Char(36)
+  socialType SocialType @map("social_type")
+  providerId String     @map("provider_id") @db.VarChar(255)
+  password   String?    @map("password") @db.Text
+  loginEmail String     @map("login_email") @db.VarChar(255)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime?  @updatedAt @map("updated_at")
+  user       User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@unique([uid, socialType])
+  @@index([loginEmail, socialType])
+  @@map("oauth")
+}
+
+model Term {
+  termId    BigInt     @id @default(autoincrement()) @map("term_id")
+  termName  TermName   @default(NONE) @map("term_name")
+  userTerms UserTerm[]
+
+  @@map("term")
+}
+
+model UserTerm {
+  userTermId BigInt    @id @default(autoincrement()) @map("user_term_id")
+  uid        String    @db.Char(36)
+  termId     BigInt    @map("term_id")
+  termActive Boolean   @default(false) @map("term_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime? @updatedAt @map("updated_at")
+  user       User      @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  term       Term      @relation(fields: [termId], references: [termId])
+
+  @@map("user_term")
 }
