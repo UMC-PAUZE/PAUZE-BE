@@ -9,10 +9,37 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/refresh",
 ];
 
-function isPublicPath(path: string): boolean {
-  return PUBLIC_PATH_PREFIXES.some(
-    (publicPath) => path === publicPath || path.startsWith(`${publicPath}/`)
+const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts", "/audio-guides"];
+
+function matchesPathPrefix(path: string, prefixes: string[]): boolean {
+  return prefixes.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`)
   );
+}
+
+function isPublicPath(path: string): boolean {
+  return matchesPathPrefix(path, PUBLIC_PATH_PREFIXES);
+}
+
+function isOptionalAuthPath(path: string): boolean {
+  return matchesPathPrefix(path, OPTIONAL_AUTH_PATH_PREFIXES);
+}
+
+function extractBearerToken(authorization: string | undefined): string | null {
+  if (!authorization?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authorization.slice("Bearer ".length).trim();
+  return token || null;
+}
+
+function setUserFromToken(req: Request, token: string): void {
+  const payload = verifyAccessToken(token);
+  req.user = {
+    uid: payload.uid,
+    role: payload.role,
+  };
 }
 
 export function authenticate(
@@ -25,19 +52,29 @@ export function authenticate(
     return;
   }
 
-  const authorization = req.headers.authorization;
-  if (!authorization?.startsWith("Bearer ")) {
-    next(
-      new AppError({
-        code: "AUTH_UNAUTHORIZED_401",
-        message: "인증이 필요합니다.",
-        statusCode: 401,
-      })
-    );
+  if (isOptionalAuthPath(req.path)) {
+    const token = extractBearerToken(req.headers.authorization);
+    if (!token) {
+      next();
+      return;
+    }
+
+    try {
+      setUserFromToken(req, token);
+      next();
+    } catch {
+      next(
+        new AppError({
+          code: "AUTH_UNAUTHORIZED_401",
+          message: "유효하지 않은 access token입니다.",
+          statusCode: 401,
+        })
+      );
+    }
     return;
   }
 
-  const token = authorization.slice("Bearer ".length).trim();
+  const token = extractBearerToken(req.headers.authorization);
   if (!token) {
     next(
       new AppError({
@@ -50,11 +87,7 @@ export function authenticate(
   }
 
   try {
-    const payload = verifyAccessToken(token);
-    req.user = {
-      uid: payload.uid,
-      role: payload.role,
-    };
+    setUserFromToken(req, token);
     next();
   } catch {
     next(
