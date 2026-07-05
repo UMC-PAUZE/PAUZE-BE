@@ -1,25 +1,24 @@
 import type {
-  ApiResponse,
   CurationPostListQuery,
   CurationPostListResult,
-} from "./curation-post.dto.js";
-import { successResponse } from "./curation-post.dto.js";
-import { CurationPostRepository } from "./curation-post.repository.js";
+} from "../dto/curation-post.dto.js";
+import {
+  type CurationPostRepository,
+  curationPostRepository,
+} from "../repository/curation-post.repository.js";
 
 const SUMMARY_LENGTH = 50;
 
 export class CurationPostService {
-  constructor(
-    private readonly curationPostRepository = new CurationPostRepository(),
-  ) {}
+  constructor(private readonly curationPostRepository: CurationPostRepository) {}
 
   async getCurationPosts(
     query: CurationPostListQuery,
-  ): Promise<ApiResponse<CurationPostListResult>> {
+  ): Promise<CurationPostListResult> {
     const { posts, totalElements } =
       await this.curationPostRepository.findMany(query);
 
-    return successResponse("게시글 목록 조회 성공", {
+    return {
       content: posts.map((post) => {
         const summary =
           post.content.length > SUMMARY_LENGTH
@@ -27,16 +26,16 @@ export class CurationPostService {
             : post.content;
 
         return {
-          postId: post.id,
-          categoryId: post.categoryId,
+          postId: Number(post.postId),
+          categoryId: Number(post.categoryId),
           categoryName: post.category.name,
           title: post.title,
           summary,
           source: post.source,
           thumbnailUrl: post.thumbnailUrl,
           viewCount: post.viewCount,
-          isLiked: "likes" in post ? post.likes.length > 0 : false,
-          isBookmarked: "bookmarks" in post ? post.bookmarks.length > 0 : false,
+          isLiked: (post.likes?.length ?? 0) > 0,
+          isBookmarked: (post.bookmarks?.length ?? 0) > 0,
           createdAt: post.createdAt.toISOString(),
         };
       }),
@@ -44,6 +43,8 @@ export class CurationPostService {
       size: query.size,
       totalElements,
       totalPages: Math.ceil(totalElements / query.size),
-    });
+    };
   }
 }
+
+export const curationPostService = new CurationPostService(curationPostRepository);

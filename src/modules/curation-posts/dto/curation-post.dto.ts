@@ -1,10 +1,3 @@
-export interface ApiResponse<T> {
-  isSuccess: boolean;
-  code: string;
-  message: string;
-  result: T;
-}
-
 export interface CurationPostListQuery {
   categoryId?: number;
   keyword?: string;
@@ -34,13 +27,3 @@ export interface CurationPostListResult {
   totalElements: number;
   totalPages: number;
 }
-
-export const successResponse = <T>(
-  message: string,
-  result: T,
-): ApiResponse<T> => ({
-  isSuccess: true,
-  code: "COMMON_200",
-  message,
-  result,
-});
