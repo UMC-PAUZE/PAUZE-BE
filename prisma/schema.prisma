@@ -48,6 +48,7 @@ model User {
   postBookmarks         PostBookmark[]
   searchHistories       SearchHistory[]
   audioLikes            AudioLiked[]
+  audioSaves            AudioSave[]
 
   @@map("users")
 }
@@ -186,19 +187,33 @@ model AudioGuide {
 
   category   AudioCategory @relation(fields: [categoryId], references: [categoryId])
   likedBy    AudioLiked[]
+  savedBy    AudioSave[]
 
   @@map("audio_guide")
 }
 
 model AudioLiked {
-  likedId   BigInt   @id @map("liked_id")
-  audioId   BigInt   @map("audio_id")
-  uid       String
+  likedId   BigInt     @id @default(autoincrement()) @map("liked_id")
+  audioId   BigInt     @map("audio_id")
+  uid       String     @db.Char(36)
+  createdAt DateTime   @default(now()) @map("created_at")
 
-  user      User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
   audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
 
-  createdAt DateTime @map("created_at")
-
+  @@unique([audioId, uid])
   @@map("audio_liked")
+}
+
+model AudioSave {
+  saveId    BigInt     @id @default(autoincrement()) @map("save_id")
+  audioId   BigInt     @map("audio_id")
+  uid       String     @db.Char(36)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
+  user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@unique([audioId, uid])
+  @@map("audio_save")
 }

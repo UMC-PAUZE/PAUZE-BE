@@ -187,13 +187,89 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "AudioSuccessResponse_any_": {
+    "AudioGuidePublicItem": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "audioTitle": {"dataType":"string","required":true},
+            "categoryId": {"dataType":"double","required":true},
+            "categoryName": {"dataType":"string","required":true},
+            "fileUrl": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioGuideAuthenticatedItem": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "audioTitle": {"dataType":"string","required":true},
+            "categoryId": {"dataType":"double","required":true},
+            "categoryName": {"dataType":"string","required":true},
+            "fileUrl": {"dataType":"string","required":true},
+            "isLiked": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioGuideListItem": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"ref":"AudioGuidePublicItem"},{"ref":"AudioGuideAuthenticatedItem"}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_AudioGuideListItem-Array_": {
         "dataType": "refObject",
         "properties": {
             "isSuccess": {"dataType":"enum","enums":[true],"required":true},
-            "code": {"dataType":"enum","enums":["COMMON_200"],"required":true},
+            "code": {"dataType":"string","required":true},
             "message": {"dataType":"string","required":true},
-            "result": {"dataType":"any","required":true},
+            "result": {"dataType":"array","array":{"dataType":"refAlias","ref":"AudioGuideListItem"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioCategoryCode": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["NATURE_SOUND"]},{"dataType":"enum","enums":["ASMR"]},{"dataType":"enum","enums":["NOISE"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioSaveResult": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "isSaved": {"dataType":"boolean","required":true},
+            "audioUrl": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_AudioSaveResult_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"AudioSaveResult","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioLikeToggleResult": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "isLiked": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_AudioLikeToggleResult_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"AudioLikeToggleResult","required":true},
         },
         "additionalProperties": false,
     },
@@ -400,8 +476,9 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAudioController_getAllGuides: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
         };
-        app.get('/api/audio-guides',
+        app.get('/audio-guides',
             ...(fetchMiddlewares<RequestHandler>(AudioController)),
             ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.getAllGuides)),
 
@@ -421,7 +498,7 @@ export function RegisterRoutes(app: Router) {
                 response,
                 next,
                 validatedArgs,
-                successStatus: undefined,
+                successStatus: 200,
               });
             } catch (err) {
                 return next(err);
@@ -429,9 +506,10 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAudioController_getAudioGuidesByCategory: Record<string, TsoaRoute.ParameterSchema> = {
-                categoryCode: {"in":"query","name":"categoryCode","required":true,"dataType":"union","subSchemas":[{"dataType":"enum","enums":["NATURE_SOUND"]},{"dataType":"enum","enums":["ASMR"]},{"dataType":"enum","enums":["NOISE"]}]},
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                categoryCode: {"in":"query","name":"categoryCode","required":true,"ref":"AudioCategoryCode"},
         };
-        app.get('/api/audio-guides/categories',
+        app.get('/audio-guides/categories',
             ...(fetchMiddlewares<RequestHandler>(AudioController)),
             ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.getAudioGuidesByCategory)),
 
@@ -451,38 +529,39 @@ export function RegisterRoutes(app: Router) {
                 response,
                 next,
                 validatedArgs,
-                successStatus: undefined,
+                successStatus: 200,
               });
             } catch (err) {
                 return next(err);
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsAudioController_saveAudioGuides: Record<string, TsoaRoute.ParameterSchema> = {
+        const argsAudioController_saveAudioGuide: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
                 audioId: {"in":"path","name":"audioId","required":true,"dataType":"string"},
-                uid: {"in":"query","name":"uid","required":true,"dataType":"string"},
         };
-        app.post('/api/audio-guides/:audioId/saves',
+        app.post('/audio-guides/:audioId/saves',
+            authenticateMiddleware([{"bearer":[]}]),
             ...(fetchMiddlewares<RequestHandler>(AudioController)),
-            ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.saveAudioGuides)),
+            ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.saveAudioGuide)),
 
-            async function AudioController_saveAudioGuides(request: ExRequest, response: ExResponse, next: any) {
+            async function AudioController_saveAudioGuide(request: ExRequest, response: ExResponse, next: any) {
 
             // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsAudioController_saveAudioGuides, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsAudioController_saveAudioGuide, request, response });
 
                 const controller = new AudioController();
 
               await templateService.apiHandler({
-                methodName: 'saveAudioGuides',
+                methodName: 'saveAudioGuide',
                 controller,
                 response,
                 next,
                 validatedArgs,
-                successStatus: undefined,
+                successStatus: 200,
               });
             } catch (err) {
                 return next(err);
@@ -490,10 +569,11 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAudioController_toggleAudioLike: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
                 audioId: {"in":"path","name":"audioId","required":true,"dataType":"string"},
-                uid: {"in":"query","name":"uid","required":true,"dataType":"string"},
         };
-        app.patch('/api/audio-guides/:audioId/likes',
+        app.patch('/audio-guides/:audioId/likes',
+            authenticateMiddleware([{"bearer":[]}]),
             ...(fetchMiddlewares<RequestHandler>(AudioController)),
             ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.toggleAudioLike)),
 
@@ -513,7 +593,7 @@ export function RegisterRoutes(app: Router) {
                 response,
                 next,
                 validatedArgs,
-                successStatus: undefined,
+                successStatus: 200,
               });
             } catch (err) {
                 return next(err);

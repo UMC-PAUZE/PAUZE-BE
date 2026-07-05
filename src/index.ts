@@ -38,6 +38,14 @@ app.use(express.urlencoded({ extended: false }));
 const swaggerFile = JSON.parse(
   fs.readFileSync(path.resolve("dist/swagger.json"), "utf8")
 );
+
+const optionalBearerSecurity = [{ bearer: [] }, {}];
+for (const path of ["/audio-guides", "/audio-guides/categories"]) {
+  if (swaggerFile.paths?.[path]?.get) {
+    swaggerFile.paths[path].get.security = optionalBearerSecurity;
+  }
+}
+
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 const router = express.Router();

@@ -1,25 +1,28 @@
-// 카테고리별 청각 오디오 목록 조회 요청 쿼리
-export interface GetAudioGuidesByCategoryDto {
-    categoryCode: "NATURE_SOUND" | "ASMR" | "NOISE";
-}
-  
-// 청각 오디오 저장/좋아요 요청 쿼리
-export interface AudioLikedDto {
-    uid: string;
+export type AudioCategoryCode = "NATURE_SOUND" | "ASMR" | "NOISE";
+
+export interface AudioGuidePublicItem {
+  audioId: number;
+  audioTitle: string;
+  categoryId: number;
+  categoryName: string;
+  fileUrl: string;
 }
 
-// 공통 성공 응답 규격 인터페이스
-export interface AudioSuccessResponse<T> {
-    isSuccess: true;
-    code: "COMMON_200";
-    message: string;
-    result: T;
+export interface AudioGuideAuthenticatedItem extends AudioGuidePublicItem {
+  isLiked: boolean;
 }
 
-// 실패 응답 규격 인터페이스
-export interface AudioErrorResponse {
-    isSuccess: false;
-    code: string;
-    message: string;
-    result: null;
+export type AudioGuideListItem =
+  | AudioGuidePublicItem
+  | AudioGuideAuthenticatedItem;
+
+export interface AudioLikeToggleResult {
+  audioId: number;
+  isLiked: boolean;
+}
+
+export interface AudioSaveResult {
+  audioId: number;
+  isSaved: boolean;
+  audioUrl: string;
 }

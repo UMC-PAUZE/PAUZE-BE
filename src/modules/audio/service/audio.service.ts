@@ -1,89 +1,141 @@
-import { PrismaClient, AudioCode } from "../../../generated/prisma";
-import { AudioAppError } from "../../../common/middlewares/audio.middleware.js";
-import { AUDIO_CODE, AUDIO_MESSAGE } from "../errors/audio.error.js";
-
-const prisma = new PrismaClient();
+import { AppError } from "../../../common/errors/app.error.js";
+import type {
+  AudioCategoryCode,
+  AudioGuideListItem,
+  AudioLikeToggleResult,
+  AudioSaveResult,
+} from "../dto/audio.dto.js";
+import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
+import {
+  type AudioGuideRepository,
+  audioGuideRepository,
+} from "../repository/audio-guide.repository.js";
+import {
+  type AudioLikeRepository,
+  audioLikeRepository,
+} from "../repository/audio-like.repository.js";
+import {
+  type AudioSaveRepository,
+  audioSaveRepository,
+} from "../repository/audio-save.repository.js";
+import { getSignedAudioUrl } from "./audio-s3.stub.js";
 
 export class AudioService {
-    // 청각 오디오 목록 조회
-    public async getAudioGuides(): Promise<any> {
-        const audioList = await prisma.audioGuide.findMany({
-            include: { category: true },
-        });
-        
-        return audioList.map((audio:any) => ({
-            audioId: Number(audio.audioId),
-            audioTitle: audio.audioTitle,
-            categoryId: Number(audio.categoryId),
-            categoryName: audio.category?.categoryName,
-            fileUrl: audio.audioUrl,
-            isLiked: false
-        }));
+  constructor(
+    private readonly audioGuideRepository: AudioGuideRepository,
+    private readonly audioLikeRepository: AudioLikeRepository,
+    private readonly audioSaveRepository: AudioSaveRepository,
+  ) {}
+
+  async getAudioGuides(userId?: string): Promise<AudioGuideListItem[]> {
+    const audioList = await this.audioGuideRepository.findMany(userId);
+    return audioList.map((audio) => this.toListItem(audio, userId));
+  }
+
+  async getAudioGuidesByCategory(
+    categoryCode: AudioCategoryCode,
+    userId?: string,
+  ): Promise<AudioGuideListItem[]> {
+    const audioList =
+      await this.audioGuideRepository.findManyByCategoryCode(
+        categoryCode,
+        userId,
+      );
+    return audioList.map((audio) => this.toListItem(audio, userId));
+  }
+
+  async saveAudioGuide(audioId: bigint, uid: string): Promise<AudioSaveResult> {
+    const audio = await this.audioGuideRepository.findById(audioId);
+    if (!audio) {
+      throw new AppError({
+        code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
+        message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
+        statusCode: 404,
+      });
     }
 
-    // 카테고리별 청각 오디오 목록 조회
-    public async getAudioGuidesByCategory(categoryCode: string): Promise<any> {
-        const audioList = await prisma.audioGuide.findMany({
-            where: { category: { categoryCode } },
-            include: { category: true },
+    const existing = await this.audioSaveRepository.findByAudioIdAndUid(
+      audioId,
+      uid,
+    );
+    if (!existing) {
+      try {
+        await this.audioSaveRepository.create(audioId, uid);
+      } catch {
+        throw new AppError({
+          code: AUDIO_CODES.AUDIO_SAVE_FAILED,
+          message: AUDIO_MESSAGES.AUDIO_SAVE_FAILED,
+          statusCode: 500,
         });
-        
-        // 명세서 예시 기준: 데이터가 없을 때 404 에러를 던지고 싶다면 주석 해제하여 사용
-        /*
-        if (!audioList || audioList.length === 0) {
-            throw new AudioAppError(AUDIO_CODE.AUDIOGUID_NOT_FOUND, AUDIO_MESSAGE.AUDIOGUID_NOT_FOUND, 404);
-        }
-        */
-        
-        return audioList.map((audio:any) => ({
-            audioId: Number(audio.audioId),
-            audioTitle: audio.audioTitle,
-            categoryId: Number(audio.categoryId),
-            categoryName: audio.category?.categoryName,
-            fileUrl: audio.audioUrl,
-            isLiked: false
-        }));
+      }
     }
 
-    // 청각 오디오 저장
-    public async saveAudioGuides(audioId: bigint, uid: string): Promise<any> {
-        try {
-            // 임시 테이블 저장 로직 예시
-            // const saveRecord = await prisma.audioSave.create({ data: { audioId, uid } });
-            
-            return {
-                audioId: Number(audioId),
-                isSaved: true,
-                audioUrl: "https://..."
-            };
-        } catch (error) {
-            // 저장 실패 시 미들웨어로 에러 전파
-            throw new AudioAppError(AUDIO_CODE.AUDIO_SAVE_FAILED, AUDIO_MESSAGE.AUDIO_SAVE_FAILED, 500);
-        }
+    return {
+      audioId: Number(audioId),
+      isSaved: true,
+      audioUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
+    };
+  }
+
+  async toggleAudioLike(
+    audioId: bigint,
+    uid: string,
+  ): Promise<AudioLikeToggleResult> {
+    const audio = await this.audioGuideRepository.findById(audioId);
+    if (!audio) {
+      throw new AppError({
+        code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
+        message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
+        statusCode: 404,
+      });
     }
 
-    // 청각 오디오 좋아요 표시/삭제(토글)
-    public async toggleAudioLike(audioId: bigint, uid: string) {
-        const likeRecord = await prisma.audioLiked.findFirst({
-            where: { audioId, uid },
-        });
+    const likeRecord = await this.audioLikeRepository.findByAudioIdAndUid(
+      audioId,
+      uid,
+    );
 
-        if (likeRecord) {
-            await prisma.audioLiked.delete({
-                where: { likedId: likeRecord.likedId },
-            });
-            return { audioId: Number(audioId), isLiked: false };
-        }
-
-        const mockLikedId = BigInt(Date.now()); 
-        await prisma.audioLiked.create({
-            data: {
-                likedId: mockLikedId,
-                audioId: audioId,
-                uid: uid,
-                createdAt: new Date(),
-            },
-        });
-        return { audioId: Number(audioId), isLiked: true };
+    if (likeRecord) {
+      await this.audioLikeRepository.delete(likeRecord.likedId);
+      return { audioId: Number(audioId), isLiked: false };
     }
+
+    await this.audioLikeRepository.create(audioId, uid);
+    return { audioId: Number(audioId), isLiked: true };
+  }
+
+  private toListItem(
+    audio: {
+      audioId: bigint;
+      audioTitle: string;
+      audioUrl: string;
+      categoryId: bigint;
+      category: { categoryName: string };
+      likedBy?: { likedId: bigint }[];
+    },
+    userId?: string,
+  ): AudioGuideListItem {
+    const base = {
+      audioId: Number(audio.audioId),
+      audioTitle: audio.audioTitle,
+      categoryId: Number(audio.categoryId),
+      categoryName: audio.category.categoryName,
+      fileUrl: audio.audioUrl,
+    };
+
+    if (!userId) {
+      return base;
+    }
+
+    return {
+      ...base,
+      isLiked: (audio.likedBy?.length ?? 0) > 0,
+    };
+  }
 }
+
+export const audioService = new AudioService(
+  audioGuideRepository,
+  audioLikeRepository,
+  audioSaveRepository,
+);

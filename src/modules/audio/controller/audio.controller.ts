@@ -1,69 +1,145 @@
-import { Controller, Get, Post, Patch, Path, Tags, Route, Query } from 'tsoa';
-import { AudioService } from '../service/audio.service.js';
-import { AudioSuccessResponse } from '../dto/audio.dto.js';
+import type { Request as ExpressRequest } from "express";
+import {
+  Controller,
+  Get,
+  Patch,
+  Path,
+  Post,
+  Query,
+  Request,
+  Response,
+  Route,
+  Security,
+  SuccessResponse,
+  Tags,
+} from "tsoa";
+import { AppError } from "../../../common/errors/app.error.js";
+import { success } from "../../../common/responses/response.js";
+import type { ApiSuccessResponse } from "../../../common/responses/response.js";
+import type {
+  AudioCategoryCode,
+  AudioGuideListItem,
+  AudioLikeToggleResult,
+  AudioSaveResult,
+} from "../dto/audio.dto.js";
+import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
+import { audioService } from "../service/audio.service.js";
 
-const audioService = new AudioService();
+function parseAudioId(audioId: string): bigint {
+  if (!/^\d+$/.test(audioId)) {
+    throw new AppError({
+      code: AUDIO_CODES.BAD_REQUEST,
+      message: AUDIO_MESSAGES.BAD_REQUEST,
+      statusCode: 400,
+    });
+  }
 
-@Tags("AUDIO")
-@Route('api/audio-guides')
+  const parsed = BigInt(audioId);
+  if (parsed < 1n) {
+    throw new AppError({
+      code: AUDIO_CODES.BAD_REQUEST,
+      message: AUDIO_MESSAGES.BAD_REQUEST,
+      statusCode: 400,
+    });
+  }
+
+  return parsed;
+}
+
+@Route("audio-guides")
+@Tags("Audio Guides")
 export class AudioController extends Controller {
-    
-    // 청각 오디오 목록 조회
-    @Get("")
-    public async getAllGuides(): Promise<AudioSuccessResponse<any>> {
-        const data = await audioService.getAudioGuides();
-        return {
-            isSuccess: true,
-            code: "COMMON_200",
-            message: "요청에 성공했습니다.",
-            result: data
-        };
+  @Get("/")
+  @SuccessResponse(200, "OK")
+  @Response(401, "Unauthorized")
+  public async getAllGuides(
+    @Request() request: ExpressRequest,
+  ): Promise<ApiSuccessResponse<AudioGuideListItem[]>> {
+    const result = await audioService.getAudioGuides(request.user?.uid);
+    return success(
+      AUDIO_CODES.GET_AUDIO_GUIDES_SUCCESS,
+      AUDIO_MESSAGES.GET_AUDIO_GUIDES_SUCCESS,
+      result,
+    );
+  }
+
+  @Get("categories")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  public async getAudioGuidesByCategory(
+    @Request() request: ExpressRequest,
+    @Query() categoryCode: AudioCategoryCode,
+  ): Promise<ApiSuccessResponse<AudioGuideListItem[]>> {
+    const result = await audioService.getAudioGuidesByCategory(
+      categoryCode,
+      request.user?.uid,
+    );
+    return success(
+      AUDIO_CODES.GET_AUDIO_GUIDES_BY_CATEGORY_SUCCESS,
+      AUDIO_MESSAGES.GET_AUDIO_GUIDES_BY_CATEGORY_SUCCESS,
+      result,
+    );
+  }
+
+  @Post("{audioId}/saves")
+  @Security("bearer")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  @Response(404, "Not Found")
+  @Response(500, "Internal Server Error")
+  public async saveAudioGuide(
+    @Request() request: ExpressRequest,
+    @Path() audioId: string,
+  ): Promise<ApiSuccessResponse<AudioSaveResult>> {
+    const uid = request.user?.uid;
+    if (!uid) {
+      throw new AppError({
+        code: "AUTH_UNAUTHORIZED_401",
+        message: "인증이 필요합니다.",
+        statusCode: 401,
+      });
     }
 
-    // 카테고리별 청각 오디오 목록 조회
-    // 💡 해결: 객체 DTO 대신 TSOA가 해석할 수 있게 쿼리 파라미터를 개별 변수로 쪼갰어!
-    @Get("categories")
-    public async getAudioGuidesByCategory(
-        @Query() categoryCode: "NATURE_SOUND" | "ASMR" | "NOISE"
-    ): Promise<AudioSuccessResponse<any>> {
-        const data = await audioService.getAudioGuidesByCategory(categoryCode);
-        return {
-            isSuccess: true,
-            code: "COMMON_200",
-            message: "요청에 성공했습니다.",
-            result: data
-        };
+    const result = await audioService.saveAudioGuide(
+      parseAudioId(audioId),
+      uid,
+    );
+    return success(
+      AUDIO_CODES.SAVE_AUDIO_GUIDE_SUCCESS,
+      AUDIO_MESSAGES.SAVE_AUDIO_GUIDE_SUCCESS,
+      result,
+    );
+  }
+
+  @Patch("{audioId}/likes")
+  @Security("bearer")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  @Response(404, "Not Found")
+  public async toggleAudioLike(
+    @Request() request: ExpressRequest,
+    @Path() audioId: string,
+  ): Promise<ApiSuccessResponse<AudioLikeToggleResult>> {
+    const uid = request.user?.uid;
+    if (!uid) {
+      throw new AppError({
+        code: "AUTH_UNAUTHORIZED_401",
+        message: "인증이 필요합니다.",
+        statusCode: 401,
+      });
     }
 
-    // 청각 오디오 저장
-    // 💡 해결: @Query() query 대신 @Query() uid로 명학하게 쪼개서 매핑했어!
-    @Post("{audioId}/saves")
-    public async saveAudioGuides(
-        @Path() audioId: string, 
-        @Query() uid: string
-    ): Promise<AudioSuccessResponse<any>> {
-        const data = await audioService.saveAudioGuides(BigInt(audioId), uid); 
-        return {
-            isSuccess: true,
-            code: "COMMON_200",
-            message: "요청에 성공했습니다.",
-            result: data
-        };
-    }
-
-    // 청각 오디오 좋아요(토글)
-    // 💡 해결: 여기도 uid를 개별 스트링 쿼리로 받도록 수정 완료!
-    @Patch("{audioId}/likes") 
-    public async toggleAudioLike(
-        @Path() audioId: string, 
-        @Query() uid: string
-    ): Promise<AudioSuccessResponse<any>> {
-        const data = await audioService.toggleAudioLike(BigInt(audioId), uid); 
-        return {
-            isSuccess: true,
-            code: "COMMON_200",
-            message: "요청에 성공했습니다.",
-            result: data
-        };
-    }
+    const result = await audioService.toggleAudioLike(
+      parseAudioId(audioId),
+      uid,
+    );
+    return success(
+      AUDIO_CODES.TOGGLE_AUDIO_LIKE_SUCCESS,
+      AUDIO_MESSAGES.TOGGLE_AUDIO_LIKE_SUCCESS,
+      result,
+    );
+  }
 }
