@@ -7,7 +7,7 @@ tone_instructions: >
   버그, 보안, 성능, 안정성, 유지보수성을 우선적으로 검토해주세요.
   단순 코드 스타일이나 포맷팅보다는 실제 문제가 될 수 있는 사항을 중심으로 리뷰해주세요.
   초보 개발자도 이해할 수 있도록 이유와 개선 방법을 함께 설명하고,
-  필요한 경우 간단한 JavaScript 또는 TypeScript 코드 예시를 제시해주세요.
+  needed 인 경우 간단한 JavaScript 또는 TypeScript 코드 예시를 제시해주세요.
 
   이 프로젝트(PAUZE-BE)는 Express 5 + TypeScript + TSOA 기반이며,
   Prisma(MariaDB), Redis(ioredis), JWT 인증을 사용합니다.
@@ -60,4 +60,3 @@ ignore_patterns:
 
 chat:
   auto_reply: true
-
