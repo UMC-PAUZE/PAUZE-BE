@@ -1,10 +1,24 @@
-export interface ApiResponse<T> {
-    resultType: "SUCCESS";
-    error: null;
-    data: T;
-  }
-  export const success = <T>(data: T): ApiResponse<T> => ({
-    resultType: "SUCCESS",
-    error: null,
-    data,
-  });
+export interface ApiSuccessResponse<T> {
+  isSuccess: true;
+  code: string;
+  message: string;
+  result: T;
+}
+
+export interface ApiErrorResponse {
+  isSuccess: false;
+  code: string;
+  message: string;
+  result: unknown;
+}
+
+export const success = <T>(
+  code: string,
+  message: string,
+  result: T
+): ApiSuccessResponse<T> => ({
+  isSuccess: true,
+  code,
+  message,
+  result,
+});
