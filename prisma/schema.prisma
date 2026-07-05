@@ -37,6 +37,7 @@ model User {
   role                  Role       @default(USER)
   oauths                Oauth[]
   userTerms             UserTerm[]
+  audioLikes            AudioLiked[]
 
   @@map("users")
 }
@@ -77,57 +78,29 @@ model UserTerm {
 
   @@map("user_term")
 }
-
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-}
-
-datasource db {
-  provider = "mysql"
-}
-
-enum Role {
-  USER
-  ADMIN
-}
-
-model User {
-  uid                   String    @id @default(uuid()) @db.Char(36)
-  email                 String    @unique @db.VarChar(255)
-  nickname              String    @db.VarChar(255)
-  profileImageUrl       String?   @map("profile_image_url") @db.Text
-  profileS3Key          String?   @map("profile_s3_key") @db.VarChar(255)
-  reminderAlarmActive   Boolean   @default(false) @map("reminder_alarm_active")
-  sensitiveAlarmActive  Boolean   @default(false) @map("sensitive_alarm_active")
-  curationAlarmActive   Boolean   @default(false) @map("curation_alarm_active")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime? @updatedAt @map("updated_at")
-  pushToken             String?   @map("push_token") @db.VarChar(255)
-  role                  Role      @default(USER)
-  audioLiked            AudioLiked[]
-
-  @@map("users")
-}
-
 // 즉각 진정하기 - 청각 안정
 
 model AudioCategory {
   categoryId   BigInt    @id @map("category_id")
   categoryName String    @db.VarChar(50) @map("category_name")
-  categoryCode AudioCode @map("category_code")
+  
+  // 외래키로 변경
+  codeId       Int       @map("code_id")
+  audioCode    AudioCode @relation(fields: [codeId], references: [id])
+  
   createdAt    DateTime  @map("created_at")
   updatedAt    DateTime? @map("updated_at")
-
   audioGuides  AudioGuide[]
 
   @@map("audio_category")
 }
 
-enum AudioCode {
-  NATURE_SOUND
-  ASMR
-  NOISE
+model AudioCode {
+  id        Int             @id @default(autoincrement())
+  codeName  String          @unique @db.VarChar(50) @map("code_name") // NATURE_SOUND 등 들어옴
+  categories AudioCategory[]
+
+  @@map("audio_code")
 }
 
 model AudioGuide {

@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../generated/prisma";
+import { PrismaClient, AudioCode } from "../../../generated/prisma";
 import { AudioAppError } from "../../../common/middlewares/audio.middleware.js";
 import { AUDIO_CODE, AUDIO_MESSAGE } from "../errors/audio.error.js";
 
@@ -11,12 +11,12 @@ export class AudioService {
             include: { category: true },
         });
         
-        return audioList.map(audio => ({
+        return audioList.map((audio:any) => ({
             audioId: Number(audio.audioId),
             audioTitle: audio.audioTitle,
             categoryId: Number(audio.categoryId),
             categoryName: audio.category?.categoryName,
-            fileUrl: audio.fileUrl,
+            fileUrl: audio.audioUrl,
             isLiked: false
         }));
     }
@@ -35,12 +35,12 @@ export class AudioService {
         }
         */
         
-        return audioList.map(audio => ({
+        return audioList.map((audio:any) => ({
             audioId: Number(audio.audioId),
             audioTitle: audio.audioTitle,
             categoryId: Number(audio.categoryId),
             categoryName: audio.category?.categoryName,
-            fileUrl: audio.fileUrl,
+            fileUrl: audio.audioUrl,
             isLiked: false
         }));
     }
