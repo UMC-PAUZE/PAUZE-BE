@@ -9,6 +9,8 @@ import { HealthController } from './../health.controller';
 import { CurationPostController } from './../modules/curation-posts/controller/curation-post.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../modules/auth/controller/auth.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { AudioController } from './../modules/audio/controller/audio.controller';
 import { expressAuthentication } from './../common/middlewares/tsoa.authentication';
 // @ts-ignore - no great way to install types from subpackage
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
@@ -181,6 +183,93 @@ const models: TsoaRoute.Models = {
             "code": {"dataType":"string","required":true},
             "message": {"dataType":"string","required":true},
             "result": {"ref":"AuthMeResultDto","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioGuidePublicItem": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "audioTitle": {"dataType":"string","required":true},
+            "categoryId": {"dataType":"double","required":true},
+            "categoryName": {"dataType":"string","required":true},
+            "fileUrl": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioGuideAuthenticatedItem": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "audioTitle": {"dataType":"string","required":true},
+            "categoryId": {"dataType":"double","required":true},
+            "categoryName": {"dataType":"string","required":true},
+            "fileUrl": {"dataType":"string","required":true},
+            "isLiked": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioGuideListItem": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"ref":"AudioGuidePublicItem"},{"ref":"AudioGuideAuthenticatedItem"}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_AudioGuideListItem-Array_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"dataType":"array","array":{"dataType":"refAlias","ref":"AudioGuideListItem"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioCategoryCode": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["NATURE_SOUND"]},{"dataType":"enum","enums":["ASMR"]},{"dataType":"enum","enums":["NOISE"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioSaveResult": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "isSaved": {"dataType":"boolean","required":true},
+            "audioUrl": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_AudioSaveResult_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"AudioSaveResult","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AudioLikeToggleResult": {
+        "dataType": "refObject",
+        "properties": {
+            "audioId": {"dataType":"double","required":true},
+            "isLiked": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_AudioLikeToggleResult_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"AudioLikeToggleResult","required":true},
         },
         "additionalProperties": false,
     },
@@ -375,6 +464,131 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getMe',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAudioController_getAllGuides: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+        };
+        app.get('/audio-guides',
+            ...(fetchMiddlewares<RequestHandler>(AudioController)),
+            ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.getAllGuides)),
+
+            async function AudioController_getAllGuides(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAudioController_getAllGuides, request, response });
+
+                const controller = new AudioController();
+
+              await templateService.apiHandler({
+                methodName: 'getAllGuides',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAudioController_getAudioGuidesByCategory: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                categoryCode: {"in":"query","name":"categoryCode","required":true,"ref":"AudioCategoryCode"},
+        };
+        app.get('/audio-guides/categories',
+            ...(fetchMiddlewares<RequestHandler>(AudioController)),
+            ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.getAudioGuidesByCategory)),
+
+            async function AudioController_getAudioGuidesByCategory(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAudioController_getAudioGuidesByCategory, request, response });
+
+                const controller = new AudioController();
+
+              await templateService.apiHandler({
+                methodName: 'getAudioGuidesByCategory',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAudioController_saveAudioGuide: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                audioId: {"in":"path","name":"audioId","required":true,"dataType":"string"},
+        };
+        app.post('/audio-guides/:audioId/saves',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(AudioController)),
+            ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.saveAudioGuide)),
+
+            async function AudioController_saveAudioGuide(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAudioController_saveAudioGuide, request, response });
+
+                const controller = new AudioController();
+
+              await templateService.apiHandler({
+                methodName: 'saveAudioGuide',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAudioController_toggleAudioLike: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                audioId: {"in":"path","name":"audioId","required":true,"dataType":"string"},
+        };
+        app.patch('/audio-guides/:audioId/likes',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(AudioController)),
+            ...(fetchMiddlewares<RequestHandler>(AudioController.prototype.toggleAudioLike)),
+
+            async function AudioController_toggleAudioLike(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAudioController_toggleAudioLike, request, response });
+
+                const controller = new AudioController();
+
+              await templateService.apiHandler({
+                methodName: 'toggleAudioLike',
                 controller,
                 response,
                 next,

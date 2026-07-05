@@ -9,7 +9,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/refresh",
 ];
 
-const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts"];
+const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts", "/audio-guides"];
 
 function matchesPathPrefix(path: string, prefixes: string[]): boolean {
   return prefixes.some(
