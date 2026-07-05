@@ -21,22 +21,60 @@ enum TermName {
   NONE
 }
 
+enum SleepLevel {
+  UNDER_FOUR
+  FOUR_TO_SIX
+  SIX_TO_EIGHT
+  OVER_EIGHT
+}
+
+enum NoiseLevel {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum VisualLevel {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum SocialLevel {
+  NONE
+  SOME
+  MANY
+}
+
+enum EnergyLevel {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum SensitivityLevel {
+  LOW
+  NORMAL
+  HIGH
+}
+
 model User {
-  uid                   String     @id @default(uuid()) @db.Char(36)
-  email                 String     @unique @db.VarChar(255)
-  nickname              String     @db.VarChar(255)
-  profileImageUrl       String?    @map("profile_image_url") @db.Text
-  profileS3Key          String?    @map("profile_s3_key") @db.VarChar(255)
-  reminderAlarmActive   Boolean    @default(true) @map("reminder_alarm_active")
-  sensitiveAlarmActive  Boolean    @default(true) @map("sensitive_alarm_active")
-  curationAlarmActive   Boolean    @default(true) @map("curation_alarm_active")
-  birth                 DateTime   @map("birth") @db.Date
-  createdAt             DateTime   @default(now()) @map("created_at")
-  updatedAt             DateTime?  @updatedAt @map("updated_at")
-  pushToken             String?    @map("push_token") @db.VarChar(255)
-  role                  Role       @default(USER)
+  uid                   String      @id @default(uuid()) @db.Char(36)
+  email                 String      @unique @db.VarChar(255)
+  nickname              String      @db.VarChar(255)
+  profileImageUrl       String?     @map("profile_image_url") @db.Text
+  profileS3Key          String?     @map("profile_s3_key") @db.VarChar(255)
+  reminderAlarmActive   Boolean     @default(true) @map("reminder_alarm_active")
+  sensitiveAlarmActive  Boolean     @default(true) @map("sensitive_alarm_active")
+  curationAlarmActive   Boolean     @default(true) @map("curation_alarm_active")
+  birth                 DateTime    @map("birth") @db.Date
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime?   @updatedAt @map("updated_at")
+  pushToken             String?     @map("push_token") @db.VarChar(255)
+  role                  Role        @default(USER)
   oauths                Oauth[]
   userTerms             UserTerm[]
+  conditions            Condition[]
 
   @@map("users")
 }
@@ -76,4 +114,27 @@ model UserTerm {
   term       Term      @relation(fields: [termId], references: [termId])
 
   @@map("user_term")
+}
+
+model Condition {
+  conditionId       BigInt           @id @default(autoincrement()) @map("condition_id")
+  uid               String           @db.Char(36)
+
+  sleepLevel        SleepLevel       @map("sleep_level")
+  noiseLevel        NoiseLevel       @map("noise_level")
+  visualLevel       VisualLevel      @map("visual_level")
+  socialLevel       SocialLevel      @map("social_level")
+  energyLevel       EnergyLevel      @map("energy_level")
+
+  sensitivityScore  Int              @map("sensitivity_score")
+  sensitivityLevel  SensitivityLevel @map("sensitivity_level")
+  triggerCodes      Json             @map("trigger_codes")
+
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime?        @updatedAt @map("updated_at")
+
+  user              User             @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@index([uid])
+  @@map("condition")
 }
