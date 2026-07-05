@@ -21,6 +21,13 @@ enum TermName {
   NONE
 }
 
+enum CurationCategoryName {
+  HSP_TIP   @map("HSP팁")
+  RESEARCH  @map("연구")
+  BREATHING @map("호흡법")
+  SOUND     @map("사운드")
+}
+
 model User {
   uid                   String     @id @default(uuid()) @db.Char(36)
   email                 String     @unique @db.VarChar(255)
@@ -37,6 +44,9 @@ model User {
   role                  Role       @default(USER)
   oauths                Oauth[]
   userTerms             UserTerm[]
+  postLikes             PostLike[]
+  postBookmarks         PostBookmark[]
+  searchHistories       SearchHistory[]
 
   @@map("users")
 }
@@ -76,4 +86,65 @@ model UserTerm {
   term       Term      @relation(fields: [termId], references: [termId])
 
   @@map("user_term")
+}
+
+model CurationCategory {
+  categoryId BigInt               @id @default(autoincrement()) @map("category_id")
+  name       CurationCategoryName
+  createdAt  DateTime             @default(now()) @map("created_at")
+  updatedAt  DateTime?            @updatedAt @map("updated_at")
+  posts      CurationPost[]
+
+  @@map("curation_categories")
+}
+
+model CurationPost {
+  postId            BigInt           @id @default(autoincrement()) @map("post_id")
+  title             String           @db.VarChar(255)
+  content           String           @db.Text
+  source            String?          @db.VarChar(255)
+  thumbnailUrl      String?          @map("thumbnail_url") @db.Text
+  viewCount         Int              @default(0) @map("view_count")
+  isPublished       Boolean          @default(true) @map("is_published")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime?        @updatedAt @map("updated_at")
+  categoryId        BigInt           @map("category_id")
+  estimatedReadTime Int              @map("estimated_read_time")
+  category          CurationCategory @relation(fields: [categoryId], references: [categoryId])
+  likes             PostLike[]
+  bookmarks         PostBookmark[]
+
+  @@map("curation_posts")
+}
+
+model PostLike {
+  likesId   BigInt       @id @default(autoincrement()) @map("likes_id")
+  createdAt DateTime     @default(now()) @map("created_at")
+  postId    BigInt       @map("post_id")
+  uid       String       @db.Char(36)
+  post      CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
+  user      User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@map("post_likes")
+}
+
+model PostBookmark {
+  bookmarkId BigInt       @id @default(autoincrement()) @map("bookmark_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  postId     BigInt       @map("post_id")
+  uid        String       @db.Char(36)
+  post       CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
+  user       User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@map("post_bookmarks")
+}
+
+model SearchHistory {
+  searchHistoryId BigInt   @id @default(autoincrement()) @map("search_history_id")
+  keyword         String   @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at")
+  uid             String   @db.Char(36)
+  user            User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@map("search_histories")
 }
