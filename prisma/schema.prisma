@@ -25,11 +25,12 @@ model User {
   updatedAt             DateTime? @updatedAt @map("updated_at")
   pushToken             String?   @map("push_token") @db.VarChar(255)
   role                  Role      @default(USER)
+  audioLiked            AudioLiked[]
 
   @@map("users")
 }
 
-// 즉각 진정하기
+// 즉각 진정하기 - 청각 안정
 
 model AudioCategory {
   categoryId   BigInt    @id @map("category_id")
@@ -67,7 +68,7 @@ model AudioGuide {
 model AudioLiked {
   likedId   BigInt   @id @map("liked_id")
   audioId   BigInt   @map("audio_id")
-  uid       String   // 기존에 만들어져 있는 User의 uid 타입에 맞춤
+  uid       String
 
   user      User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
   audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
