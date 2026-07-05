@@ -28,3 +28,51 @@ model User {
 
   @@map("users")
 }
+
+// 즉각 진정하기
+
+model AudioCategory {
+  categoryId   BigInt    @id @map("category_id")
+  categoryName String    @db.VarChar(50) @map("category_name")
+  categoryCode AudioCode @map("category_code")
+  createdAt    DateTime  @map("created_at")
+  updatedAt    DateTime? @map("updated_at")
+
+  audioGuides  AudioGuide[]
+
+  @@map("audio_category")
+}
+
+enum AudioCode {
+  NATURE_SOUND
+  ASMR
+  NOISE
+}
+
+model AudioGuide {
+  audioId    BigInt    @id @map("audio_id")
+  categoryId BigInt    @map("category_id")
+  audioTitle String    @db.VarChar(50) @map("audio_title")
+  audioUrl   String    @db.Text @map("audio_url")
+  audioKey   String    @db.VarChar(255) @map("audio_key")
+  createdAt  DateTime  @map("created_at")
+  updatedAt  DateTime? @map("updated_at")
+
+  category   AudioCategory @relation(fields: [categoryId], references: [categoryId])
+  likedBy    AudioLiked[]
+
+  @@map("audio_guide")
+}
+
+model AudioLiked {
+  likedId   BigInt   @id @map("liked_id")
+  audioId   BigInt   @map("audio_id")
+  uid       String   // 기존에 만들어져 있는 User의 uid 타입에 맞춤
+
+  user      User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
+
+  createdAt DateTime @map("created_at")
+
+  @@map("audio_liked")
+}
