@@ -17,11 +17,12 @@ const app: Express = express();
 const port = process.env.PORT || 3000;
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.error = function ({ errorCode = null, message = null, data = null }) {
+  res.error = function ({ code = null, message = null, result = null }) {
     return this.json({
-      resultType: "FAILED",
-      error: { errorCode, message, data },
-      data: null,
+      isSuccess: false,
+      code,
+      message,
+      result,
     });
   };
   next();
@@ -40,12 +41,7 @@ const swaggerFile = JSON.parse(
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 const router = express.Router();
-router.use((req, res, next) => {
-  if (req.path === "/health") {
-    return next();
-  }
-  authenticate(req, res, next);
-});
+router.use(authenticate);
 RegisterRoutes(router);
 app.use("/api", router);
 
@@ -55,12 +51,12 @@ app.use((err: AppError, req: Request, res: Response, next: NextFunction) => {
   }
 
   res.status(err.statusCode || 500).error({
-    errorCode: err.errorCode || "unknown",
+    code: err.code || "unknown",
     message: err.message || null,
-    data: err.data || null,
+    result: err.result ?? null,
   });
 });
 
 app.listen(port, () => {
-  console.log(`[server]: Server is running at <http://localhost>:${port}`);
+  console.log(`[server]: Server is running at http://localhost:${port}`);
 });

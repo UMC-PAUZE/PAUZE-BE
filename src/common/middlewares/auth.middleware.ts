@@ -1,32 +1,68 @@
-import express from 'express';
-import cookieParser from 'cookie-parser';
-import morgan from 'morgan';
+import type { NextFunction, Request, Response } from "express";
+import { AppError } from "../errors/app.error.js";
+import { verifyAccessToken } from "../utils/jwt.util.js";
 
+const PUBLIC_PATH_PREFIXES = [
+  "/health",
+  "/auth/signup",
+  "/auth/login",
+  "/auth/refresh",
+];
 
-const app = express();
-app.use(morgan('dev'));  // 로그 포맷: dev
-app.use(cookieParser()); 
+function isPublicPath(path: string): boolean {
+  return PUBLIC_PATH_PREFIXES.some(
+    (publicPath) => path === publicPath || path.startsWith(`${publicPath}/`)
+  );
+}
 
-app.get('/test', (req, res) => {
-  res.send('Hello!');
-});
+export function authenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  if (isPublicPath(req.path)) {
+    next();
+    return;
+  }
 
-// 쿠키 만드는 라우터 
-app.get('/setcookie', (req, res) => {
-    // 'myCookie'라는 이름으로 'hello' 값을 가진 쿠키를 생성
-    res.cookie('myCookie', 'hello', { maxAge: 60000 }); // 60초간 유효
-    res.send('쿠키가 생성되었습니다!');
-});
+  const authorization = req.headers.authorization;
+  if (!authorization?.startsWith("Bearer ")) {
+    next(
+      new AppError({
+        code: "AUTH_UNAUTHORIZED_401",
+        message: "인증이 필요합니다.",
+        statusCode: 401,
+      })
+    );
+    return;
+  }
 
-// 쿠키 읽는 라우터 
-app.get('/getcookie', (req, res) => {
-    // cookie-parser 덕분에 req.cookies 객체에서 바로 꺼내 쓸 수 있음
-    const myCookie = req.cookies.myCookie; 
-    
-    if (myCookie) {
-        console.log(req.cookies); // { myCookie: 'hello' }
-        res.send(`당신의 쿠키: ${myCookie}`);
-    } else {
-        res.send('쿠키가 없습니다.');
-    }
-});
+  const token = authorization.slice("Bearer ".length).trim();
+  if (!token) {
+    next(
+      new AppError({
+        code: "AUTH_UNAUTHORIZED_401",
+        message: "인증이 필요합니다.",
+        statusCode: 401,
+      })
+    );
+    return;
+  }
+
+  try {
+    const payload = verifyAccessToken(token);
+    req.user = {
+      uid: payload.uid,
+      role: payload.role,
+    };
+    next();
+  } catch {
+    next(
+      new AppError({
+        code: "AUTH_UNAUTHORIZED_401",
+        message: "유효하지 않은 access token입니다.",
+        statusCode: 401,
+      })
+    );
+  }
+}
