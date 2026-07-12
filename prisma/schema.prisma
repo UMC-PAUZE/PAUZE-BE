@@ -29,7 +29,7 @@ enum CurationCategoryName {
 }
 
 enum SleepLevel {
-  UNDER_FOUR
+  LESS_THAN_FOUR
   FOUR_TO_SIX
   SIX_TO_EIGHT
   OVER_EIGHT
@@ -39,24 +39,28 @@ enum NoiseLevel {
   LOW
   NORMAL
   HIGH
+  VERY_HIGH
 }
 
 enum VisualLevel {
   LOW
   NORMAL
   HIGH
+  VERY_HIGH
 }
 
 enum SocialLevel {
   NONE
   SOME
   MANY
+  TOO_MUCH
 }
 
 enum EnergyLevel {
   LOW
   NORMAL
   HIGH
+  VERY_LOW
 }
 
 enum SensitivityLevel {
@@ -268,12 +272,13 @@ model Condition {
   sensitivityScore  Int              @map("sensitivity_score")
   sensitivityLevel  SensitivityLevel @map("sensitivity_level")
   triggerCodes      Json             @map("trigger_codes")
+  conditionDate     DateTime         @map("condition_date") @db.Date
 
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime?        @updatedAt @map("updated_at")
 
   user              User             @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
-  @@index([uid])
+  @@unique([uid, conditionDate])
   @@map("condition")
 }

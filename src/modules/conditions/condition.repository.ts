@@ -1,9 +1,10 @@
-import { prisma } from "../../../db.config.js";
+import { prisma } from "../../db.config.js";
 import type {
   EnergyLevel,
   NoiseLevel,
   SensitivityLevel,
   SleepLevel,
+  TriggerCode,
   SocialLevel,
   VisualLevel,
 } from "./condition.dto.js";
@@ -17,24 +18,23 @@ interface InsertTodayConditionParams {
   energyLevel: EnergyLevel;
   sensitivityScore: number;
   sensitivityLevel: SensitivityLevel;
+  triggerCodes: TriggerCode[];
   conditionDate: Date;
 }
 
 export const findTodayConditionByUserId = async (
   uId: string,
-  startDate: Date,
-  endDate: Date,
+  conditionDate: Date,
 ) => {
-  return await prisma.user_conditions.findFirst({
+  return await prisma.condition.findUnique({
     where: {
-      uid: uId,
-      condition_date: {
-        gte: startDate,
-        lt: endDate,
+      uid_conditionDate: {
+        uid: uId,
+        conditionDate,
       },
     },
     select: {
-      condition_id: true,
+      conditionId: true,
     },
   });
 };
@@ -48,26 +48,26 @@ export const insertTodayCondition = async ({
   energyLevel,
   sensitivityScore,
   sensitivityLevel,
+  triggerCodes,
   conditionDate,
 }: InsertTodayConditionParams) => {
-  return await prisma.user_conditions.create({
+  return await prisma.condition.create({
     data: {
       uid: uId,
-      sleep_level: sleepLevel,
-      noise_level: noiseLevel,
-      visual_level: visualLevel,
-      social_level: socialLevel,
-      energy_level: energyLevel,
-      sensitivity_score: sensitivityScore,
-      sensitivity_level: sensitivityLevel,
-      condition_date: conditionDate,
-      created_at: new Date(),
-      updated_at: new Date(),
+      sleepLevel,
+      noiseLevel,
+      visualLevel,
+      socialLevel,
+      energyLevel,
+      sensitivityScore,
+      sensitivityLevel,
+      triggerCodes,
+      conditionDate,
     },
     select: {
-      condition_id: true,
-      sensitivity_score: true,
-      sensitivity_level: true,
+      conditionId: true,
+      sensitivityScore: true,
+      sensitivityLevel: true,
     },
   });
 };

@@ -23,23 +23,17 @@ export class ConditionAlreadyExistsError extends Error {
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
-const getKstTodayRange = () => {
+const getKstTodayDate = () => {
   const now = new Date();
   const kstNow = new Date(now.getTime() + KST_OFFSET_MS);
 
-  const year = kstNow.getUTCFullYear();
-  const month = kstNow.getUTCMonth();
-  const date = kstNow.getUTCDate();
-
-  const startOfTodayKst = new Date(Date.UTC(year, month, date) - KST_OFFSET_MS);
-  const startOfTomorrowKst = new Date(
-    Date.UTC(year, month, date + 1) - KST_OFFSET_MS,
+  return new Date(
+    Date.UTC(
+      kstNow.getUTCFullYear(),
+      kstNow.getUTCMonth(),
+      kstNow.getUTCDate(),
+    ),
   );
-
-  return {
-    startOfTodayKst,
-    startOfTomorrowKst,
-  };
 };
 
 const sleepScoreMap: Record<SleepLevel, number> = {
@@ -128,12 +122,11 @@ export const createTodayCondition = async (
   uId: string,
   body: CreateTodayConditionRequestDto,
 ): Promise<CreateTodayConditionResponseDto> => {
-  const { startOfTodayKst, startOfTomorrowKst } = getKstTodayRange();
+  const conditionDate = getKstTodayDate();
 
   const existingCondition = await findTodayConditionByUserId(
     uId,
-    startOfTodayKst,
-    startOfTomorrowKst,
+    conditionDate,
   );
 
   if (existingCondition) {
@@ -144,22 +137,38 @@ export const createTodayCondition = async (
   const sensitivityLevel = calculateSensitivityLevel(sensitivityScore);
   const triggerCodes = calculateTriggerCodes(body);
 
-  const createdCondition = await insertTodayCondition({
-    uId,
-    sleepLevel: body.sleepLevel,
-    noiseLevel: body.noiseLevel,
-    visualLevel: body.visualLevel,
-    socialLevel: body.socialLevel,
-    energyLevel: body.energyLevel,
-    sensitivityScore,
-    sensitivityLevel,
-    conditionDate: startOfTodayKst,
-  });
+  let createdCondition;
+
+  try {
+    createdCondition = await insertTodayCondition({
+      uId,
+      sleepLevel: body.sleepLevel,
+      noiseLevel: body.noiseLevel,
+      visualLevel: body.visualLevel,
+      socialLevel: body.socialLevel,
+      energyLevel: body.energyLevel,
+      sensitivityScore,
+      sensitivityLevel,
+      triggerCodes,
+      conditionDate,
+    });
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      throw new ConditionAlreadyExistsError();
+    }
+
+    throw error;
+  }
 
   return {
-    conditionId: createdCondition.condition_id,
-    sensitivityScore: createdCondition.sensitivity_score,
-    sensitivityLevel: createdCondition.sensitivity_level as SensitivityLevel,
+    conditionId: Number(createdCondition.conditionId),
+    sensitivityScore: createdCondition.sensitivityScore,
+    sensitivityLevel: createdCondition.sensitivityLevel as SensitivityLevel,
     triggerCodes,
   };
 };
