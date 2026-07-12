@@ -29,17 +29,17 @@ enum CurationCategoryName {
 }
 
 enum SleepLevel {
-  LESS_THAN_FOUR
-  FOUR_TO_SIX
+  OVER_8
   SIX_TO_EIGHT
-  OVER_EIGHT
+  FOUR_TO_SIX
+  LESS_4
 }
 
 enum NoiseLevel {
-  LOW
+  QUIET
   NORMAL
-  HIGH
-  VERY_HIGH
+  UNCOMFORTABLE
+  HARD
 }
 
 enum VisualLevel {
@@ -50,17 +50,17 @@ enum VisualLevel {
 }
 
 enum SocialLevel {
-  NONE
-  SOME
   MANY
-  TOO_MUCH
+  SOME
+  LITTLE
+  ALONE
 }
 
 enum EnergyLevel {
-  LOW
+  ENOUGH
   NORMAL
-  HIGH
-  VERY_LOW
+  LOW
+  NONE
 }
 
 enum SensitivityLevel {

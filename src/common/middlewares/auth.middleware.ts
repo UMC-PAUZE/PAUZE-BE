@@ -78,9 +78,13 @@ export function authenticate(
   if (!token) {
     next(
       new AppError({
-        code: "AUTH_UNAUTHORIZED_401",
+        code:
+          req.path === "/conditions/today"
+            ? "UNAUTHORIZED"
+            : "AUTH_UNAUTHORIZED_401",
         message: "인증이 필요합니다.",
         statusCode: 401,
+        result: req.path === "/conditions/today" ? [] : null,
       })
     );
     return;

@@ -58,6 +58,17 @@ app.use((err: AppError, req: Request, res: Response, next: NextFunction) => {
     return next(err);
   }
 
+  if (
+    req.path === "/api/conditions/today" &&
+    (err.name === "ValidateError" || "fields" in err)
+  ) {
+    return res.status(400).error({
+      code: "INVALID_CONDITION_INPUT",
+      message: "컨디션 입력값이 올바르지 않습니다.",
+      result: [],
+    });
+  }
+
   res.status(err.statusCode || 500).error({
     code: err.code || "unknown",
     message: err.message || null,

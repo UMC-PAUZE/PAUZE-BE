@@ -1,21 +1,12 @@
 import { prisma } from "../../db.config.js";
 import type {
-  EnergyLevel,
-  NoiseLevel,
+  CreateTodayConditionRequestDto,
   SensitivityLevel,
-  SleepLevel,
   TriggerCode,
-  SocialLevel,
-  VisualLevel,
 } from "./condition.dto.js";
 
-interface InsertTodayConditionParams {
-  uId: string;
-  sleepLevel: SleepLevel;
-  noiseLevel: NoiseLevel;
-  visualLevel: VisualLevel;
-  socialLevel: SocialLevel;
-  energyLevel: EnergyLevel;
+interface InsertTodayConditionParams extends CreateTodayConditionRequestDto {
+  uid: string;
   sensitivityScore: number;
   sensitivityLevel: SensitivityLevel;
   triggerCodes: TriggerCode[];
@@ -23,24 +14,19 @@ interface InsertTodayConditionParams {
 }
 
 export const findTodayConditionByUserId = async (
-  uId: string,
+  uid: string,
   conditionDate: Date,
 ) => {
-  return await prisma.condition.findUnique({
+  return prisma.condition.findUnique({
     where: {
-      uid_conditionDate: {
-        uid: uId,
-        conditionDate,
-      },
+      uid_conditionDate: { uid, conditionDate },
     },
-    select: {
-      conditionId: true,
-    },
+    select: { conditionId: true },
   });
 };
 
 export const insertTodayCondition = async ({
-  uId,
+  uid,
   sleepLevel,
   noiseLevel,
   visualLevel,
@@ -50,24 +36,25 @@ export const insertTodayCondition = async ({
   sensitivityLevel,
   triggerCodes,
   conditionDate,
-}: InsertTodayConditionParams) => {
-  return await prisma.condition.create({
-    data: {
-      uid: uId,
-      sleepLevel,
-      noiseLevel,
-      visualLevel,
-      socialLevel,
-      energyLevel,
-      sensitivityScore,
-      sensitivityLevel,
-      triggerCodes,
-      conditionDate,
-    },
-    select: {
-      conditionId: true,
-      sensitivityScore: true,
-      sensitivityLevel: true,
-    },
-  });
-};
+}: InsertTodayConditionParams) =>
+  prisma.$transaction((tx) =>
+    tx.condition.create({
+      data: {
+        uid,
+        sleepLevel,
+        noiseLevel,
+        visualLevel,
+        socialLevel,
+        energyLevel,
+        sensitivityScore,
+        sensitivityLevel,
+        triggerCodes,
+        conditionDate,
+      },
+      select: {
+        conditionId: true,
+        sensitivityScore: true,
+        sensitivityLevel: true,
+      },
+    }),
+  );

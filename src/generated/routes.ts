@@ -8,6 +8,8 @@ import { HealthController } from './../health.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { CurationPostController } from './../modules/curation-posts/controller/curation-post.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { ConditionController } from './../modules/conditions/condition.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../modules/auth/controller/auth.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AudioController } from './../modules/audio/controller/audio.controller';
@@ -69,6 +71,86 @@ const models: TsoaRoute.Models = {
             "code": {"dataType":"string","required":true},
             "message": {"dataType":"string","required":true},
             "result": {"ref":"CurationPostListResult","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SensitivityLevel": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["LOW"]},{"dataType":"enum","enums":["NORMAL"]},{"dataType":"enum","enums":["HIGH"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TriggerCode": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["SLEEP_DEPRIVATION"]},{"dataType":"enum","enums":["NOISE_EXPOSURE"]},{"dataType":"enum","enums":["VISUAL_STIMULATION"]},{"dataType":"enum","enums":["SOCIAL_ISOLATION"]},{"dataType":"enum","enums":["LOW_ENERGY"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CreateTodayConditionResponseDto": {
+        "dataType": "refObject",
+        "properties": {
+            "conditionId": {"dataType":"double","required":true},
+            "sensitivityScore": {"dataType":"double","required":true},
+            "sensitivityLevel": {"ref":"SensitivityLevel","required":true},
+            "triggerCodes": {"dataType":"array","array":{"dataType":"refAlias","ref":"TriggerCode"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_CreateTodayConditionResponseDto_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"CreateTodayConditionResponseDto","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ConditionErrorResponseDto": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[false],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"dataType":"array","array":{"dataType":"any"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SleepLevel": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["OVER_8"]},{"dataType":"enum","enums":["SIX_TO_EIGHT"]},{"dataType":"enum","enums":["FOUR_TO_SIX"]},{"dataType":"enum","enums":["LESS_4"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "NoiseLevel": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["QUIET"]},{"dataType":"enum","enums":["NORMAL"]},{"dataType":"enum","enums":["UNCOMFORTABLE"]},{"dataType":"enum","enums":["HARD"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "VisualLevel": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["LOW"]},{"dataType":"enum","enums":["NORMAL"]},{"dataType":"enum","enums":["HIGH"]},{"dataType":"enum","enums":["VERY_HIGH"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SocialLevel": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["MANY"]},{"dataType":"enum","enums":["SOME"]},{"dataType":"enum","enums":["LITTLE"]},{"dataType":"enum","enums":["ALONE"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "EnergyLevel": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["ENOUGH"]},{"dataType":"enum","enums":["NORMAL"]},{"dataType":"enum","enums":["LOW"]},{"dataType":"enum","enums":["NONE"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CreateTodayConditionRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "sleepLevel": {"ref":"SleepLevel","required":true},
+            "noiseLevel": {"ref":"NoiseLevel","required":true},
+            "visualLevel": {"ref":"VisualLevel","required":true},
+            "socialLevel": {"ref":"SocialLevel","required":true},
+            "energyLevel": {"ref":"EnergyLevel","required":true},
         },
         "additionalProperties": false,
     },
@@ -348,6 +430,38 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsConditionController_createToday: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                body: {"in":"body","name":"body","required":true,"ref":"CreateTodayConditionRequestDto"},
+        };
+        app.post('/conditions/today',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(ConditionController)),
+            ...(fetchMiddlewares<RequestHandler>(ConditionController.prototype.createToday)),
+
+            async function ConditionController_createToday(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsConditionController_createToday, request, response });
+
+                const controller = new ConditionController();
+
+              await templateService.apiHandler({
+                methodName: 'createToday',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 201,
               });
             } catch (err) {
                 return next(err);
