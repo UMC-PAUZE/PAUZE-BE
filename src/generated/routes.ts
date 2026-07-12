@@ -6,6 +6,8 @@ import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { HealthController } from './../health.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { VisualController } from './../modules/visual/controller/visual.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { CurationPostController } from './../modules/curation-posts/controller/curation-post.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../modules/auth/controller/auth.controller';
@@ -28,6 +30,48 @@ const models: TsoaRoute.Models = {
             "code": {"dataType":"string","required":true},
             "message": {"dataType":"string","required":true},
             "result": {"dataType":"nestedObjectLiteral","nestedProperties":{"status":{"dataType":"string","required":true}},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "VisualGuideItem": {
+        "dataType": "refObject",
+        "properties": {
+            "visualId": {"dataType":"double","required":true},
+            "visualTitle": {"dataType":"string","required":true},
+            "visualContent": {"dataType":"string","required":true},
+            "fileUrl": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_VisualGuideItem-Array_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"dataType":"array","array":{"dataType":"refObject","ref":"VisualGuideItem"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "VisualGuideFileResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "visualKey": {"dataType":"string","required":true},
+            "fileUrl": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_VisualGuideFileResponse_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"VisualGuideFileResponse","required":true},
         },
         "additionalProperties": false,
     },
@@ -314,6 +358,65 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsVisualController_getAllGuides: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.get('/visual-guides',
+            ...(fetchMiddlewares<RequestHandler>(VisualController)),
+            ...(fetchMiddlewares<RequestHandler>(VisualController.prototype.getAllGuides)),
+
+            async function VisualController_getAllGuides(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsVisualController_getAllGuides, request, response });
+
+                const controller = new VisualController();
+
+              await templateService.apiHandler({
+                methodName: 'getAllGuides',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsVisualController_getGuideByKey: Record<string, TsoaRoute.ParameterSchema> = {
+                key: {"in":"query","name":"key","required":true,"dataType":"string"},
+        };
+        app.get('/visual-guides/file',
+            ...(fetchMiddlewares<RequestHandler>(VisualController)),
+            ...(fetchMiddlewares<RequestHandler>(VisualController.prototype.getGuideByKey)),
+
+            async function VisualController_getGuideByKey(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsVisualController_getGuideByKey, request, response });
+
+                const controller = new VisualController();
+
+              await templateService.apiHandler({
+                methodName: 'getGuideByKey',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
               });
             } catch (err) {
                 return next(err);
