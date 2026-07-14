@@ -73,6 +73,46 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CurationPostLikeResult": {
+        "dataType": "refObject",
+        "properties": {
+            "postId": {"dataType":"double","required":true},
+            "liked": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_CurationPostLikeResult_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"CurationPostLikeResult","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CurationPostBookmarkResult": {
+        "dataType": "refObject",
+        "properties": {
+            "postId": {"dataType":"double","required":true},
+            "bookmarked": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_CurationPostBookmarkResult_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"CurationPostBookmarkResult","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AuthUserDto": {
         "dataType": "refObject",
         "properties": {
@@ -343,6 +383,134 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getCurationPosts',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCurationPostController_createCurationPostLike: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                postId: {"in":"path","name":"postId","required":true,"dataType":"string"},
+        };
+        app.post('/curation-posts/:postId/likes',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController)),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController.prototype.createCurationPostLike)),
+
+            async function CurationPostController_createCurationPostLike(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCurationPostController_createCurationPostLike, request, response });
+
+                const controller = new CurationPostController();
+
+              await templateService.apiHandler({
+                methodName: 'createCurationPostLike',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 201,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCurationPostController_deleteCurationPostLike: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                postId: {"in":"path","name":"postId","required":true,"dataType":"string"},
+        };
+        app.delete('/curation-posts/:postId/likes',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController)),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController.prototype.deleteCurationPostLike)),
+
+            async function CurationPostController_deleteCurationPostLike(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCurationPostController_deleteCurationPostLike, request, response });
+
+                const controller = new CurationPostController();
+
+              await templateService.apiHandler({
+                methodName: 'deleteCurationPostLike',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCurationPostController_createCurationPostBookmark: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                postId: {"in":"path","name":"postId","required":true,"dataType":"string"},
+        };
+        app.post('/curation-posts/:postId/bookmarks',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController)),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController.prototype.createCurationPostBookmark)),
+
+            async function CurationPostController_createCurationPostBookmark(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCurationPostController_createCurationPostBookmark, request, response });
+
+                const controller = new CurationPostController();
+
+              await templateService.apiHandler({
+                methodName: 'createCurationPostBookmark',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 201,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCurationPostController_deleteCurationPostBookmark: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                postId: {"in":"path","name":"postId","required":true,"dataType":"string"},
+        };
+        app.delete('/curation-posts/:postId/bookmarks',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController)),
+            ...(fetchMiddlewares<RequestHandler>(CurationPostController.prototype.deleteCurationPostBookmark)),
+
+            async function CurationPostController_deleteCurationPostBookmark(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCurationPostController_deleteCurationPostBookmark, request, response });
+
+                const controller = new CurationPostController();
+
+              await templateService.apiHandler({
+                methodName: 'deleteCurationPostBookmark',
                 controller,
                 response,
                 next,
