@@ -37,24 +37,22 @@ export const insertTodayCondition = async ({
   triggerCodes,
   conditionDate,
 }: InsertTodayConditionParams) =>
-  prisma.$transaction((tx) =>
-    tx.condition.create({
-      data: {
-        uid,
-        sleepLevel,
-        noiseLevel,
-        visualLevel,
-        socialLevel,
-        energyLevel,
-        sensitivityScore,
-        sensitivityLevel,
-        triggerCodes,
-        conditionDate,
-      },
-      select: {
-        conditionId: true,
-        sensitivityScore: true,
-        sensitivityLevel: true,
-      },
-    }),
-  );
+  prisma.condition.create({
+    data: {
+      uid,
+      sleepLevel,
+      noiseLevel,
+      visualLevel,
+      socialLevel,
+      energyLevel,
+      sensitivityScore,
+      sensitivityLevel,
+      triggerCodes,
+      conditionDate,
+    },
+    select: {
+      conditionId: true,
+      sensitivityScore: true,
+      sensitivityLevel: true,
+    },
+  });

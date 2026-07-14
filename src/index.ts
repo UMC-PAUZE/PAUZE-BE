@@ -5,6 +5,7 @@ import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
+import { ValidateError } from "tsoa";
 import path from "path";
 import fs from "fs";
 import { RegisterRoutes } from "./generated/routes.js";
@@ -60,7 +61,7 @@ app.use((err: AppError, req: Request, res: Response, next: NextFunction) => {
 
   if (
     req.path === "/api/conditions/today" &&
-    (err.name === "ValidateError" || "fields" in err)
+    err instanceof ValidateError
   ) {
     return res.status(400).error({
       code: "INVALID_CONDITION_INPUT",
