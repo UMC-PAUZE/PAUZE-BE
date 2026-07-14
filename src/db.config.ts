@@ -9,9 +9,10 @@ const adapter = new PrismaMariaDb({
   database: process.env.DB_NAME,
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
   connectionLimit: 10,
+  allowPublicKeyRetrieval: true,
 });
 
 export const prisma = new PrismaClient({
   adapter,
-  log: ["query","info", "error", "warn"],
+  log: ["query", "info", "error", "warn"],
 });
