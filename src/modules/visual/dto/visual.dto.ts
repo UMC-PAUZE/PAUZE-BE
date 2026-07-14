@@ -1,5 +1,5 @@
 export interface VisualGuideItem {
-    visualId: number;
+    visualId: string;
     visualTitle: string;
     visualContent: string;
     fileUrl: string;

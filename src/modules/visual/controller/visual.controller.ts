@@ -32,8 +32,8 @@ export class VisualController extends Controller {
     public async getGuideByKey(@Query() key: string,): Promise<ApiSuccessResponse<VisualGuideFileResponse>> {
         const result = await visualGuideService.getVisualGuideByKey(key);
         return success(
-            VISUAL_CODES.GET_VISUAL_GUIDES_SUCCESS,
-            VISUAL_MESSAGES.GET_VISUAL_GUIDES_SUCCESS,
+            VISUAL_CODES.GET_VISUAL_GUIDE_FILE_SUCCESS,
+            VISUAL_MESSAGES.GET_VISUAL_GUIDE_FILE_SUCCESS,
             result,
         )
 

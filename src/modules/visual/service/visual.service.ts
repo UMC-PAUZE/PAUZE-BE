@@ -10,7 +10,7 @@ export class VisualGuideService {
     async getVisualGuides(): Promise<VisualGuideItem[]> {
         const visualList = await this.visualGuideRepository.findMany();
         return visualList.map((visual) => ({
-            visualId: Number(visual.visualId),
+            visualId: visual.visualId.toString(),
             visualTitle: visual.visualTitle,
             visualContent: visual.visualContent,
             fileUrl: visual.visualUrl,

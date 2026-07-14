@@ -37,7 +37,7 @@ const models: TsoaRoute.Models = {
     "VisualGuideItem": {
         "dataType": "refObject",
         "properties": {
-            "visualId": {"dataType":"double","required":true},
+            "visualId": {"dataType":"string","required":true},
             "visualTitle": {"dataType":"string","required":true},
             "visualContent": {"dataType":"string","required":true},
             "fileUrl": {"dataType":"string","required":true},

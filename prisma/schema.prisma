@@ -228,7 +228,7 @@ model VisualGuide {
   createdAt     DateTime  @map("created_at")
   updatedAt     DateTime? @map("updated_at")
 
-  @@unique(visualKey)
+  @@unique([visualKey])
   
   @@map("visual_guide")
 }
