@@ -8,7 +8,8 @@ export type CurationPostListRow = {
   content: string;
   source: string | null;
   thumbnailUrl: string | null;
-  viewCount: Int16Array;
+  viewCount: number;
+  estimatedReadTime: number;
   createdAt: Date;
   categoryId: bigint;
   category: {
@@ -16,7 +17,6 @@ export type CurationPostListRow = {
   };
   likes?: { likesId: bigint }[];
   bookmarks?: { bookmarkId: bigint }[];
-  estimatedReadTime : Int16Array;
 };
 
 export type CurationPostFindManyResult = {
@@ -27,12 +27,19 @@ export type CurationPostFindManyResult = {
 export class CurationPostRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  async findById(postId: bigint) {
+    return this.db.curationPost.findUnique({
+      where: { postId },
+      select: { postId: true },
+    });
+  }
+
   async findMany(query: CurationPostListQuery): Promise<CurationPostFindManyResult> {
     const { categoryId, keyword, page, size, userId } = query;
 
     const where = {
       isPublished: true,
-      ...(categoryId ? { categoryId } : {}),
+      ...(categoryId ? { categoryId: BigInt(categoryId) } : {}),
       ...(keyword
         ? {
             OR: [
