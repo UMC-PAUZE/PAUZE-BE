@@ -1,0 +1,141 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { MonthlyReportNotFoundError, WeeklyReportNotFoundError } from "./report.errors.js";
+import type { ReportConditionRecord } from "./report.dto.js";
+import {
+  aggregateMonthlyWeeks,
+  aggregateTopTriggers,
+  buildMonthlyReport,
+  buildWeeklyReport,
+  getTriggeredCodes,
+  getMonthlyRange,
+  getWeeklyRange,
+} from "./report.service.js";
+
+const record = (
+  date: string,
+  score: number,
+  levels: Partial<Omit<ReportConditionRecord, "conditionDate" | "sensitivityScore">> = {},
+): ReportConditionRecord => ({
+  conditionDate: new Date(`${date}T00:00:00.000Z`),
+  sensitivityScore: score,
+  sleepLevel: "OVER_8",
+  noiseLevel: "QUIET",
+  visualLevel: "LOW",
+  socialLevel: "MANY",
+  energyLevel: "ENOUGH",
+  ...levels,
+});
+
+test("builds a weekly report and calculates hardest day and score change", () => {
+  const report = buildWeeklyReport(
+    [record("2026-07-13", 40), record("2026-07-17", 80)],
+    [record("2026-07-06", 70), record("2026-07-07", 50)],
+  );
+
+  assert.equal(report.averageScore, 60);
+  assert.equal(report.hardestDay, "금요일");
+  assert.equal(report.hardestScore, 80);
+  assert.equal(report.scoreChange, 0);
+  assert.deepEqual(report.dailyScores, [
+    { day: "월", score: 40 },
+    { day: "금", score: 80 },
+  ]);
+});
+
+test("returns null score change when the previous week has no data", () => {
+  assert.equal(buildWeeklyReport([record("2026-07-13", 40)], []).scoreChange, null);
+});
+
+test("throws the report-specific not-found errors for empty periods", () => {
+  assert.throws(() => buildWeeklyReport([], []), WeeklyReportNotFoundError);
+  assert.throws(
+    () => buildMonthlyReport([], [], new Date("2026-07-01T00:00:00.000Z")),
+    MonthlyReportNotFoundError,
+  );
+});
+
+test("aggregates trigger codes by frequency with stable tie ordering", () => {
+  const triggers = aggregateTopTriggers([
+    record("2026-07-13", 50, { sleepLevel: "FOUR_TO_SIX", noiseLevel: "UNCOMFORTABLE" }),
+    record("2026-07-14", 50, { noiseLevel: "HARD", energyLevel: "LOW" }),
+    record("2026-07-15", 50, { sleepLevel: "LESS_4", energyLevel: "NONE" }),
+  ]);
+
+  assert.deepEqual(triggers, [
+    { rank: 1, trigger: "수면시간", count: 2 },
+    { rank: 2, trigger: "소음 노출", count: 2 },
+    { rank: 3, trigger: "에너지 수준", count: 2 },
+  ]);
+  assert.ok(triggers.length <= 5);
+});
+
+test("counts only answer levels scored 13 or 20 as triggers", () => {
+  assert.deepEqual(
+    getTriggeredCodes(record("2026-07-13", 0)),
+    [],
+  );
+  assert.deepEqual(
+    getTriggeredCodes(record("2026-07-14", 7, { noiseLevel: "NORMAL" })),
+    [],
+  );
+  assert.deepEqual(
+    getTriggeredCodes(record("2026-07-15", 13, { noiseLevel: "UNCOMFORTABLE" })),
+    ["NOISE_EXPOSURE"],
+  );
+  assert.deepEqual(
+    getTriggeredCodes(record("2026-07-16", 20, { noiseLevel: "HARD" })),
+    ["NOISE_EXPOSURE"],
+  );
+});
+
+test("counts a trigger at most once per condition date", () => {
+  const triggers = aggregateTopTriggers([
+    record("2026-07-13", 20, { noiseLevel: "HARD" }),
+  ]);
+  assert.deepEqual(triggers, [{ rank: 1, trigger: "소음 노출", count: 1 }]);
+});
+
+test("counts noise exposure across 18 distinct dates independently of total averages", () => {
+  const records = Array.from({ length: 18 }, (_, index) =>
+    record(`2026-07-${String(index + 1).padStart(2, "0")}`, index, {
+      noiseLevel: "UNCOMFORTABLE",
+    }),
+  );
+  assert.deepEqual(aggregateTopTriggers(records)[0], {
+    rank: 1,
+    trigger: "소음 노출",
+    count: 18,
+  });
+  assert.equal(buildMonthlyReport(records, [], new Date("2026-07-01T00:00:00.000Z")).averageScore, 9);
+});
+
+test("groups a five-week month and finds its hardest week", () => {
+  const monthStart = new Date("2026-07-01T00:00:00.000Z");
+  const records = [
+    record("2026-07-01", 30),
+    record("2026-07-06", 40),
+    record("2026-07-13", 50),
+    record("2026-07-20", 90),
+    record("2026-07-27", 60),
+  ];
+  const weeks = aggregateMonthlyWeeks(records, monthStart);
+  const report = buildMonthlyReport(records, [record("2026-06-30", 50)], monthStart);
+
+  assert.equal(weeks.length, 5);
+  assert.equal(report.hardestWeek, "4주차");
+  assert.equal(report.hardestScore, 90);
+  assert.equal(report.scoreChange, 4);
+});
+
+test("calculates KST weekly and monthly boundaries", () => {
+  const instant = new Date("2026-07-31T16:00:00.000Z"); // 2026-08-01 01:00 KST
+  assert.deepEqual(getWeeklyRange(instant), {
+    start: new Date("2026-07-27T00:00:00.000Z"),
+    endExclusive: new Date("2026-08-03T00:00:00.000Z"),
+  });
+  assert.deepEqual(getMonthlyRange(instant), {
+    start: new Date("2026-08-01T00:00:00.000Z"),
+    endExclusive: new Date("2026-09-01T00:00:00.000Z"),
+  });
+});

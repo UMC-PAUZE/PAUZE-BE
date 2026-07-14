@@ -25,6 +25,10 @@ function isOptionalAuthPath(path: string): boolean {
   return matchesPathPrefix(path, OPTIONAL_AUTH_PATH_PREFIXES);
 }
 
+function isReportRequest(req: Request): boolean {
+  return req.path.includes("/reports/") || req.originalUrl.includes("/reports/");
+}
+
 function extractBearerToken(authorization: string | undefined): string | null {
   if (!authorization?.startsWith("Bearer ")) {
     return null;
@@ -76,15 +80,16 @@ export function authenticate(
 
   const token = extractBearerToken(req.headers.authorization);
   if (!token) {
+    const isReportPath = isReportRequest(req);
     next(
       new AppError({
         code:
-          req.path === "/conditions/today"
+          req.path === "/conditions/today" || isReportPath
             ? "UNAUTHORIZED"
             : "AUTH_UNAUTHORIZED_401",
-        message: "인증이 필요합니다.",
+        message: isReportPath ? "로그인이 필요합니다." : "인증이 필요합니다.",
         statusCode: 401,
-        result: req.path === "/conditions/today" ? [] : null,
+        result: req.path === "/conditions/today" || isReportPath ? [] : null,
       })
     );
     return;
@@ -94,11 +99,15 @@ export function authenticate(
     setUserFromToken(req, token);
     next();
   } catch {
+    const isReportPath = isReportRequest(req);
     next(
       new AppError({
-        code: "AUTH_UNAUTHORIZED_401",
-        message: "유효하지 않은 access token입니다.",
+        code: isReportPath ? "UNAUTHORIZED" : "AUTH_UNAUTHORIZED_401",
+        message: isReportPath
+          ? "로그인이 필요합니다."
+          : "유효하지 않은 access token입니다.",
         statusCode: 401,
+        result: isReportPath ? [] : null,
       })
     );
   }

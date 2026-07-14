@@ -5,7 +5,7 @@
   "description": "PAUZE-BE",
   "main": "index.js",
   "scripts": {
-    "test": "tsx src/modules/conditions/condition.service.test.ts",
+    "test": "tsx src/modules/conditions/condition.service.test.ts && tsx src/modules/reports/report.service.test.ts",
     "typecheck": "tsc --noEmit",
     "start": "tsoa spec-and-routes && tsx src/index.ts",
     "dev": "tsoa spec-and-routes && nodemon --exec tsx src/index.ts",

@@ -6,6 +6,8 @@ import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { HealthController } from './../health.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { ReportController } from './../modules/reports/report.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { CurationPostController } from './../modules/curation-posts/controller/curation-post.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { ConditionController } from './../modules/conditions/condition.controller';
@@ -30,6 +32,97 @@ const models: TsoaRoute.Models = {
             "code": {"dataType":"string","required":true},
             "message": {"dataType":"string","required":true},
             "result": {"dataType":"nestedObjectLiteral","nestedProperties":{"status":{"dataType":"string","required":true}},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DailyScoreDto": {
+        "dataType": "refObject",
+        "properties": {
+            "day": {"dataType":"string","required":true},
+            "score": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TopTriggerDto": {
+        "dataType": "refObject",
+        "properties": {
+            "rank": {"dataType":"double","required":true},
+            "trigger": {"dataType":"string","required":true},
+            "count": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WeeklyReportDto": {
+        "dataType": "refObject",
+        "properties": {
+            "averageScore": {"dataType":"double","required":true},
+            "hardestDay": {"dataType":"string","required":true},
+            "hardestScore": {"dataType":"double","required":true},
+            "pauzeCount": {"dataType":"double","required":true},
+            "scoreChange": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
+            "dailyScores": {"dataType":"array","array":{"dataType":"refObject","ref":"DailyScoreDto"},"required":true},
+            "topTriggers": {"dataType":"array","array":{"dataType":"refObject","ref":"TopTriggerDto"},"required":true},
+            "insights": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_WeeklyReportDto_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"WeeklyReportDto","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ReportErrorResponseDto": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[false],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"dataType":"array","array":{"dataType":"any"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WeeklyScoreDto": {
+        "dataType": "refObject",
+        "properties": {
+            "week": {"dataType":"string","required":true},
+            "averageScore": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "MonthlyReportDto": {
+        "dataType": "refObject",
+        "properties": {
+            "averageScore": {"dataType":"double","required":true},
+            "hardestWeek": {"dataType":"string","required":true},
+            "hardestScore": {"dataType":"double","required":true},
+            "pauzeCount": {"dataType":"double","required":true},
+            "scoreChange": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
+            "weeklyScores": {"dataType":"array","array":{"dataType":"refObject","ref":"WeeklyScoreDto"},"required":true},
+            "topTriggers": {"dataType":"array","array":{"dataType":"refObject","ref":"TopTriggerDto"},"required":true},
+            "insights": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ApiSuccessResponse_MonthlyReportDto_": {
+        "dataType": "refObject",
+        "properties": {
+            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
+            "code": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "result": {"ref":"MonthlyReportDto","required":true},
         },
         "additionalProperties": false,
     },
@@ -396,6 +489,68 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsReportController_weekly: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+        };
+        app.get('/reports/weekly',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(ReportController)),
+            ...(fetchMiddlewares<RequestHandler>(ReportController.prototype.weekly)),
+
+            async function ReportController_weekly(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsReportController_weekly, request, response });
+
+                const controller = new ReportController();
+
+              await templateService.apiHandler({
+                methodName: 'weekly',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsReportController_monthly: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+        };
+        app.get('/reports/monthly',
+            authenticateMiddleware([{"bearer":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(ReportController)),
+            ...(fetchMiddlewares<RequestHandler>(ReportController.prototype.monthly)),
+
+            async function ReportController_monthly(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsReportController_monthly, request, response });
+
+                const controller = new ReportController();
+
+              await templateService.apiHandler({
+                methodName: 'monthly',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
               });
             } catch (err) {
                 return next(err);

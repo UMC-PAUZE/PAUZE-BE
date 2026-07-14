@@ -60,3 +60,16 @@ test("recognizes duplicate-condition database errors", () => {
   assert.equal(isUniqueConstraintError({ code: "P2002" }), true);
   assert.equal(isUniqueConstraintError({ code: "P2025" }), false);
 });
+
+test("counts 13 and 20 point answers as triggers but not 0 and 7", () => {
+  assert.deepEqual(
+    calculateCondition({
+      sleepLevel: "OVER_8",
+      noiseLevel: "NORMAL",
+      visualLevel: "HIGH",
+      socialLevel: "ALONE",
+      energyLevel: "ENOUGH",
+    }).triggerCodes,
+    ["VISUAL_STIMULATION", "SOCIAL_ISOLATION"],
+  );
+});

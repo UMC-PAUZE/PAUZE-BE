@@ -2,14 +2,14 @@ import { AppError } from "../../common/errors/app.error.js";
 import type {
   CreateTodayConditionRequestDto,
   CreateTodayConditionResponseDto,
-  EnergyLevel,
-  NoiseLevel,
   SensitivityLevel,
-  SleepLevel,
-  SocialLevel,
   TriggerCode,
-  VisualLevel,
 } from "./condition.dto.js";
+import {
+  CONDITION_SCORE_POLICY,
+  CONDITION_TRIGGER_THRESHOLD,
+  getSensitivityLevel,
+} from "./condition.policy.js";
 import {
   findTodayConditionByUserId,
   insertTodayCondition,
@@ -50,61 +50,28 @@ export const getKstTodayDate = (now = new Date()): Date => {
   );
 };
 
-const sleepScoreMap: Record<SleepLevel, number> = {
-  OVER_8: 0,
-  SIX_TO_EIGHT: 7,
-  FOUR_TO_SIX: 13,
-  LESS_4: 20,
-};
-const noiseScoreMap: Record<NoiseLevel, number> = {
-  QUIET: 0,
-  NORMAL: 7,
-  UNCOMFORTABLE: 13,
-  HARD: 20,
-};
-const visualScoreMap: Record<VisualLevel, number> = {
-  LOW: 0,
-  NORMAL: 7,
-  HIGH: 13,
-  VERY_HIGH: 20,
-};
-const socialScoreMap: Record<SocialLevel, number> = {
-  MANY: 0,
-  SOME: 7,
-  LITTLE: 13,
-  ALONE: 20,
-};
-const energyScoreMap: Record<EnergyLevel, number> = {
-  ENOUGH: 0,
-  NORMAL: 7,
-  LOW: 13,
-  NONE: 20,
-};
-
 export const calculateSensitivityLevel = (score: number): SensitivityLevel => {
-  if (score <= 40) return "LOW";
-  if (score <= 65) return "NORMAL";
-  return "HIGH";
+  return getSensitivityLevel(score);
 };
 
 export const calculateCondition = (body: CreateTodayConditionRequestDto) => {
   const scores = {
-    sleep: sleepScoreMap[body.sleepLevel],
-    noise: noiseScoreMap[body.noiseLevel],
-    visual: visualScoreMap[body.visualLevel],
-    social: socialScoreMap[body.socialLevel],
-    energy: energyScoreMap[body.energyLevel],
+    sleep: CONDITION_SCORE_POLICY.sleep[body.sleepLevel],
+    noise: CONDITION_SCORE_POLICY.noise[body.noiseLevel],
+    visual: CONDITION_SCORE_POLICY.visual[body.visualLevel],
+    social: CONDITION_SCORE_POLICY.social[body.socialLevel],
+    energy: CONDITION_SCORE_POLICY.energy[body.energyLevel],
   };
   const sensitivityScore = Object.values(scores).reduce(
     (total, score) => total + score,
     0,
   );
   const triggerCodes: TriggerCode[] = [];
-  if (scores.sleep >= 13) triggerCodes.push("SLEEP_DEPRIVATION");
-  if (scores.noise >= 13) triggerCodes.push("NOISE_EXPOSURE");
-  if (scores.visual >= 13) triggerCodes.push("VISUAL_STIMULATION");
-  if (scores.social >= 13) triggerCodes.push("SOCIAL_ISOLATION");
-  if (scores.energy >= 13) triggerCodes.push("LOW_ENERGY");
+  if (scores.sleep >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("SLEEP_DEPRIVATION");
+  if (scores.noise >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("NOISE_EXPOSURE");
+  if (scores.visual >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("VISUAL_STIMULATION");
+  if (scores.social >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("SOCIAL_ISOLATION");
+  if (scores.energy >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("LOW_ENERGY");
 
   return {
     sensitivityScore,
