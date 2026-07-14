@@ -5,3 +5,11 @@ export function getSignedVisualUrl(visualKey: string, fallbackUrl: string): stri
   void visualKey;
   return fallbackUrl;
 }
+
+const mockVisualUrls: Record<string, string> = {
+  meditation: "https://example.com/mock/meditation.gif",
+};
+
+export function getMockVisualUrl(visualKey: string): string | null {
+  return mockVisualUrls[visualKey] ?? null;
+}

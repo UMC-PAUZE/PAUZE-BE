@@ -34,28 +34,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "VisualGuideItem": {
-        "dataType": "refObject",
-        "properties": {
-            "visualId": {"dataType":"string","required":true},
-            "visualTitle": {"dataType":"string","required":true},
-            "visualContent": {"dataType":"string","required":true},
-            "fileUrl": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ApiSuccessResponse_VisualGuideItem-Array_": {
-        "dataType": "refObject",
-        "properties": {
-            "isSuccess": {"dataType":"enum","enums":[true],"required":true},
-            "code": {"dataType":"string","required":true},
-            "message": {"dataType":"string","required":true},
-            "result": {"dataType":"array","array":{"dataType":"refObject","ref":"VisualGuideItem"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VisualGuideFileResponse": {
         "dataType": "refObject",
         "properties": {
@@ -358,35 +336,6 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsVisualController_getAllGuides: Record<string, TsoaRoute.ParameterSchema> = {
-        };
-        app.get('/visual-guides',
-            ...(fetchMiddlewares<RequestHandler>(VisualController)),
-            ...(fetchMiddlewares<RequestHandler>(VisualController.prototype.getAllGuides)),
-
-            async function VisualController_getAllGuides(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsVisualController_getAllGuides, request, response });
-
-                const controller = new VisualController();
-
-              await templateService.apiHandler({
-                methodName: 'getAllGuides',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: 200,
               });
             } catch (err) {
                 return next(err);
