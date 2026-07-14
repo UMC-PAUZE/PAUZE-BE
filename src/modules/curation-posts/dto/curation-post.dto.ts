@@ -27,3 +27,13 @@ export interface CurationPostListResult {
   totalElements: number;
   totalPages: number;
 }
+
+export interface CurationPostLikeResult {
+  postId: number;
+  liked: boolean;
+}
+
+export interface CurationPostBookmarkResult {
+  postId: number;
+  bookmarked: boolean;
+}

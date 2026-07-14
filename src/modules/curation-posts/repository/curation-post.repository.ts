@@ -8,7 +8,7 @@ export type CurationPostListRow = {
   content: string;
   source: string | null;
   thumbnailUrl: string | null;
-  viewCount: number;
+  viewCount: Int16Array;
   createdAt: Date;
   categoryId: bigint;
   category: {
@@ -16,6 +16,7 @@ export type CurationPostListRow = {
   };
   likes?: { likesId: bigint }[];
   bookmarks?: { bookmarkId: bigint }[];
+  estimatedReadTime : Int16Array;
 };
 
 export type CurationPostFindManyResult = {
