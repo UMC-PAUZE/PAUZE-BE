@@ -1,9 +1,15 @@
 import { AppError } from "../../../common/errors/app.error.js";
 import type {
+  CreateCurationPostRequest,
+  CreateCurationPostResult,
   CurationPostBookmarkResult,
+  CurationPostDetailResult,
   CurationPostLikeResult,
   CurationPostListQuery,
   CurationPostListResult,
+  MyBookmarkListResult,
+  UpdateCurationPostRequest,
+  UpdateCurationPostResult,
 } from "../dto/curation-post.dto.js";
 import {
   CURATION_POST_CODES,
@@ -54,6 +60,7 @@ export class CurationPostService {
           source: post.source,
           thumbnailUrl: post.thumbnailUrl,
           viewCount: post.viewCount,
+          likeCount: post._count.likes,
           isLiked: (post.likes?.length ?? 0) > 0,
           isBookmarked: (post.bookmarks?.length ?? 0) > 0,
           createdAt: post.createdAt.toISOString(),
@@ -64,6 +71,84 @@ export class CurationPostService {
       totalElements,
       totalPages: Math.ceil(totalElements / query.size),
     };
+  }
+
+  async getCurationPostDetail(
+    postId: bigint,
+    userId?: string,
+  ): Promise<CurationPostDetailResult> {
+    const post = await this.curationPostRepository.findDetailById(
+      postId,
+      userId,
+    );
+    if (!post) {
+      throw new AppError({
+        code: CURATION_POST_CODES.CURATION_POST_NOT_FOUND,
+        message: CURATION_POST_MESSAGES.CURATION_POST_NOT_FOUND,
+        statusCode: 404,
+      });
+    }
+
+    return {
+      postId: Number(post.postId),
+      categoryId: Number(post.categoryId),
+      categoryName: post.category.name,
+      title: post.title,
+      content: post.content,
+      source: post.source,
+      thumbnailUrl: post.thumbnailUrl,
+      viewCount: post.viewCount,
+      likeCount: post._count.likes,
+      estimatedReadTime: post.estimatedReadTime,
+      isPublished: post.isPublished,
+      isLiked: (post.likes?.length ?? 0) > 0,
+      isBookmarked: (post.bookmarks?.length ?? 0) > 0,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt?.toISOString() ?? null,
+    };
+  }
+
+  async createPost(
+    data: CreateCurationPostRequest,
+  ): Promise<CreateCurationPostResult> {
+    this.validateCreateRequest(data);
+    await this.validateCategoryExists(BigInt(data.categoryId));
+
+    const post = await this.curationPostRepository.create(data);
+
+    return {
+      postId: Number(post.postId),
+      categoryId: Number(post.categoryId),
+      title: post.title,
+      createdAt: post.createdAt.toISOString(),
+    };
+  }
+
+  async updatePost(
+    postId: bigint,
+    data: UpdateCurationPostRequest,
+  ): Promise<UpdateCurationPostResult> {
+    await this.validatePostExists(postId);
+    this.validateUpdateRequest(data);
+
+    if (data.categoryId !== undefined) {
+      await this.validateCategoryExists(BigInt(data.categoryId));
+    }
+
+    const post = await this.curationPostRepository.update(postId, data);
+
+    return {
+      postId: Number(post.postId),
+      categoryId: Number(post.categoryId),
+      title: post.title,
+      updatedAt: post.updatedAt?.toISOString() ?? null,
+    };
+  }
+
+  async deletePost(postId: bigint): Promise<null> {
+    await this.validatePostExists(postId);
+    await this.curationPostRepository.delete(postId);
+    return null;
   }
 
   async createLike(
@@ -162,6 +247,40 @@ export class CurationPostService {
     };
   }
 
+  async getMyBookmarks(
+    uid: string,
+    page: number,
+    size: number,
+  ): Promise<MyBookmarkListResult> {
+    const { bookmarks, totalElements } =
+      await this.curationPostBookmarkRepository.findManyByUid(uid, page, size);
+
+    return {
+      content: bookmarks.map((bookmark) => {
+        const summary =
+          bookmark.post.content.length > SUMMARY_LENGTH
+            ? `${bookmark.post.content.slice(0, SUMMARY_LENGTH)}...`
+            : bookmark.post.content;
+
+        return {
+          bookmarkId: Number(bookmark.bookmarkId),
+          postId: Number(bookmark.postId),
+          categoryId: Number(bookmark.post.categoryId),
+          categoryName: bookmark.post.category.name,
+          title: bookmark.post.title,
+          estimatedReadTime: bookmark.post.estimatedReadTime,
+          summary,
+          thumbnailUrl: bookmark.post.thumbnailUrl,
+          createdAt: bookmark.createdAt.toISOString(),
+        };
+      }),
+      page,
+      size,
+      totalElements,
+      totalPages: Math.ceil(totalElements / size),
+    };
+  }
+
   private async validatePostExists(postId: bigint) {
     const post = await this.curationPostRepository.findById(postId);
     if (!post) {
@@ -169,6 +288,63 @@ export class CurationPostService {
         code: CURATION_POST_CODES.CURATION_POST_NOT_FOUND,
         message: CURATION_POST_MESSAGES.CURATION_POST_NOT_FOUND,
         statusCode: 404,
+      });
+    }
+  }
+
+  private async validateCategoryExists(categoryId: bigint) {
+    const category = await this.curationPostRepository.findCategoryById(categoryId);
+    if (!category) {
+      throw new AppError({
+        code: CURATION_POST_CODES.CATEGORY_NOT_FOUND,
+        message: CURATION_POST_MESSAGES.CATEGORY_NOT_FOUND,
+        statusCode: 404,
+      });
+    }
+  }
+
+  private validateCreateRequest(data: CreateCurationPostRequest) {
+    if (
+      !Number.isInteger(data.categoryId) ||
+      data.categoryId < 1 ||
+      !data.title ||
+      !data.content ||
+      !Number.isInteger(data.estimatedReadTime) ||
+      data.estimatedReadTime < 1
+    ) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.REQUIRED_FIELDS_MISSING,
+        statusCode: 400,
+      });
+    }
+  }
+
+  private validateUpdateRequest(data: UpdateCurationPostRequest) {
+    const hasUpdateValue = Object.values(data).some(
+      (value) => value !== undefined,
+    );
+    if (!hasUpdateValue) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.EMPTY_UPDATE_REQUEST,
+        statusCode: 400,
+      });
+    }
+
+    if (
+      (data.categoryId !== undefined &&
+        (!Number.isInteger(data.categoryId) || data.categoryId < 1)) ||
+      (data.estimatedReadTime !== undefined &&
+        (!Number.isInteger(data.estimatedReadTime) ||
+          data.estimatedReadTime < 1)) ||
+      data.title === "" ||
+      data.content === ""
+    ) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.BAD_REQUEST,
+        statusCode: 400,
       });
     }
   }

@@ -1,6 +1,9 @@
 import { prisma } from "../../../db.config.js";
-import type { PrismaClient } from "../../../generated/prisma/client.js";
-import type { CurationPostListQuery } from "../dto/curation-post.dto.js";
+import type {
+  CreateCurationPostRequest,
+  CurationPostListQuery,
+  UpdateCurationPostRequest,
+} from "../dto/curation-post.dto.js";
 
 export type CurationPostListRow = {
   postId: bigint;
@@ -17,6 +20,14 @@ export type CurationPostListRow = {
   };
   likes?: { likesId: bigint }[];
   bookmarks?: { bookmarkId: bigint }[];
+  _count: {
+    likes: number;
+  };
+};
+
+export type CurationPostDetailRow = CurationPostListRow & {
+  isPublished: boolean;
+  updatedAt: Date | null;
 };
 
 export type CurationPostFindManyResult = {
@@ -25,12 +36,46 @@ export type CurationPostFindManyResult = {
 };
 
 export class CurationPostRepository {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: typeof prisma) {}
 
   async findById(postId: bigint) {
     return this.db.curationPost.findUnique({
       where: { postId },
       select: { postId: true },
+    });
+  }
+
+  async findCategoryById(categoryId: bigint) {
+    return this.db.curationCategory.findUnique({
+      where: { categoryId },
+      select: { categoryId: true },
+    });
+  }
+
+  async findDetailById(
+    postId: bigint,
+    userId?: string,
+  ): Promise<CurationPostDetailRow | null> {
+    return this.db.curationPost.findUnique({
+      where: { postId },
+      include: {
+        category: true,
+        likes: userId
+          ? {
+              where: { uid: userId },
+              select: { likesId: true },
+            }
+          : false,
+        bookmarks: userId
+          ? {
+              where: { uid: userId },
+              select: { bookmarkId: true },
+            }
+          : false,
+        _count: {
+          select: { likes: true },
+        },
+      },
     });
   }
 
@@ -70,12 +115,64 @@ export class CurationPostRepository {
                 select: { bookmarkId: true },
               }
             : false,
+          _count: {
+            select: { likes: true },
+          },
         },
       }),
       this.db.curationPost.count({ where }),
     ]);
 
     return { posts, totalElements };
+  }
+
+  async create(data: CreateCurationPostRequest) {
+    return this.db.curationPost.create({
+      data: {
+        title: data.title,
+        content: data.content,
+        source: data.source,
+        thumbnailUrl: data.thumbnailUrl,
+        isPublished: data.isPublished ?? true,
+        estimatedReadTime: data.estimatedReadTime,
+        category: {
+          connect: { categoryId: BigInt(data.categoryId) },
+        },
+      },
+    });
+  }
+
+  async update(postId: bigint, data: UpdateCurationPostRequest) {
+    return this.db.curationPost.update({
+      where: { postId },
+      data: {
+        ...(data.categoryId !== undefined
+          ? {
+              category: {
+                connect: { categoryId: BigInt(data.categoryId) },
+              },
+            }
+          : {}),
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.content !== undefined ? { content: data.content } : {}),
+        ...(data.source !== undefined ? { source: data.source } : {}),
+        ...(data.thumbnailUrl !== undefined
+          ? { thumbnailUrl: data.thumbnailUrl }
+          : {}),
+        ...(data.isPublished !== undefined
+          ? { isPublished: data.isPublished }
+          : {}),
+        ...(data.estimatedReadTime !== undefined
+          ? { estimatedReadTime: data.estimatedReadTime }
+          : {}),
+      },
+    });
+  }
+
+  async delete(postId: bigint) {
+    return this.db.curationPost.delete({
+      where: { postId },
+    });
   }
 }
 
