@@ -29,6 +29,8 @@ import {
 } from "../repository/curation-post.repository.js";
 
 const SUMMARY_LENGTH = 50;
+const MAX_TITLE_LENGTH = 255;
+const MAX_SOURCE_LENGTH = 255;
 
 export class CurationPostService {
   constructor(
@@ -76,12 +78,13 @@ export class CurationPostService {
   async getCurationPostDetail(
     postId: bigint,
     userId?: string,
+    isAdmin = false,
   ): Promise<CurationPostDetailResult> {
     const post = await this.curationPostRepository.findDetailById(
       postId,
       userId,
     );
-    if (!post) {
+    if (!post || (!post.isPublished && !isAdmin)) {
       throw new AppError({
         code: CURATION_POST_CODES.CURATION_POST_NOT_FOUND,
         message: CURATION_POST_MESSAGES.CURATION_POST_NOT_FOUND,
@@ -155,13 +158,10 @@ export class CurationPostService {
     postId: bigint,
     uid: string,
   ): Promise<CurationPostLikeResult> {
-    await this.validatePostExists(postId);
+    await this.validatePublishedPostExists(postId);
 
-    const like = await this.curationPostLikeRepository.findByPostIdAndUid(
-      postId,
-      uid,
-    );
-    if (like) {
+    const like = await this.curationPostLikeRepository.create(postId, uid);
+    if (!like) {
       throw new AppError({
         code: CURATION_POST_CODES.ALREADY_LIKED,
         message: CURATION_POST_MESSAGES.ALREADY_LIKED,
@@ -169,7 +169,6 @@ export class CurationPostService {
       });
     }
 
-    await this.curationPostLikeRepository.create(postId, uid);
     return {
       postId: Number(postId),
       liked: true,
@@ -180,13 +179,13 @@ export class CurationPostService {
     postId: bigint,
     uid: string,
   ): Promise<CurationPostLikeResult> {
-    await this.validatePostExists(postId);
+    await this.validatePublishedPostExists(postId);
 
-    const like = await this.curationPostLikeRepository.findByPostIdAndUid(
+    const result = await this.curationPostLikeRepository.deleteByPostIdAndUid(
       postId,
       uid,
     );
-    if (!like) {
+    if (result.count === 0) {
       throw new AppError({
         code: CURATION_POST_CODES.LIKE_NOT_FOUND,
         message: CURATION_POST_MESSAGES.LIKE_NOT_FOUND,
@@ -194,7 +193,6 @@ export class CurationPostService {
       });
     }
 
-    await this.curationPostLikeRepository.delete(like.likesId);
     return {
       postId: Number(postId),
       liked: false,
@@ -205,11 +203,10 @@ export class CurationPostService {
     postId: bigint,
     uid: string,
   ): Promise<CurationPostBookmarkResult> {
-    await this.validatePostExists(postId);
+    await this.validatePublishedPostExists(postId);
 
-    const bookmark =
-      await this.curationPostBookmarkRepository.findByPostIdAndUid(postId, uid);
-    if (bookmark) {
+    const bookmark = await this.curationPostBookmarkRepository.create(postId, uid);
+    if (!bookmark) {
       throw new AppError({
         code: CURATION_POST_CODES.ALREADY_BOOKMARKED,
         message: CURATION_POST_MESSAGES.ALREADY_BOOKMARKED,
@@ -217,7 +214,6 @@ export class CurationPostService {
       });
     }
 
-    await this.curationPostBookmarkRepository.create(postId, uid);
     return {
       postId: Number(postId),
       bookmarked: true,
@@ -228,11 +224,11 @@ export class CurationPostService {
     postId: bigint,
     uid: string,
   ): Promise<CurationPostBookmarkResult> {
-    await this.validatePostExists(postId);
+    await this.validatePublishedPostExists(postId);
 
-    const bookmark =
-      await this.curationPostBookmarkRepository.findByPostIdAndUid(postId, uid);
-    if (!bookmark) {
+    const result =
+      await this.curationPostBookmarkRepository.deleteByPostIdAndUid(postId, uid);
+    if (result.count === 0) {
       throw new AppError({
         code: CURATION_POST_CODES.BOOKMARK_NOT_FOUND,
         message: CURATION_POST_MESSAGES.BOOKMARK_NOT_FOUND,
@@ -240,7 +236,6 @@ export class CurationPostService {
       });
     }
 
-    await this.curationPostBookmarkRepository.delete(bookmark.bookmarkId);
     return {
       postId: Number(postId),
       bookmarked: false,
@@ -292,6 +287,17 @@ export class CurationPostService {
     }
   }
 
+  private async validatePublishedPostExists(postId: bigint) {
+    const post = await this.curationPostRepository.findById(postId);
+    if (!post || !post.isPublished) {
+      throw new AppError({
+        code: CURATION_POST_CODES.CURATION_POST_NOT_FOUND,
+        message: CURATION_POST_MESSAGES.CURATION_POST_NOT_FOUND,
+        statusCode: 404,
+      });
+    }
+  }
+
   private async validateCategoryExists(categoryId: bigint) {
     const category = await this.curationPostRepository.findCategoryById(categoryId);
     if (!category) {
@@ -307,10 +313,12 @@ export class CurationPostService {
     if (
       !Number.isInteger(data.categoryId) ||
       data.categoryId < 1 ||
-      !data.title ||
-      !data.content ||
+      !data.title?.trim() ||
+      !data.content?.trim() ||
       !Number.isInteger(data.estimatedReadTime) ||
-      data.estimatedReadTime < 1
+      data.estimatedReadTime < 1 ||
+      data.title.length > MAX_TITLE_LENGTH ||
+      (data.source !== undefined && data.source.length > MAX_SOURCE_LENGTH)
     ) {
       throw new AppError({
         code: CURATION_POST_CODES.BAD_REQUEST,
@@ -338,8 +346,12 @@ export class CurationPostService {
       (data.estimatedReadTime !== undefined &&
         (!Number.isInteger(data.estimatedReadTime) ||
           data.estimatedReadTime < 1)) ||
-      data.title === "" ||
-      data.content === ""
+      data.title?.trim() === "" ||
+      data.content?.trim() === "" ||
+      (data.title !== undefined && data.title.length > MAX_TITLE_LENGTH) ||
+      (data.source !== undefined &&
+        data.source !== null &&
+        data.source.length > MAX_SOURCE_LENGTH)
     ) {
       throw new AppError({
         code: CURATION_POST_CODES.BAD_REQUEST,

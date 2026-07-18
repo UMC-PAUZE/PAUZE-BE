@@ -41,7 +41,7 @@ export class CurationPostRepository {
   async findById(postId: bigint) {
     return this.db.curationPost.findUnique({
       where: { postId },
-      select: { postId: true },
+      select: { postId: true, isPublished: true },
     });
   }
 

@@ -35,6 +35,8 @@ import {
 } from "../errors/curation-post.errors.js";
 import { curationPostService } from "../service/curation-post.service.js";
 
+const MAX_PAGE_SIZE = 50;
+
 type AuthenticatedRequest = ExpressRequest & {
   user?: {
     uid: string;
@@ -90,7 +92,13 @@ function requireAdmin(request: AuthenticatedRequest) {
 }
 
 function validatePageQuery(page: number, size: number) {
-  if (!Number.isInteger(page) || page < 1 || !Number.isInteger(size) || size < 1) {
+  if (
+    !Number.isInteger(page) ||
+    page < 1 ||
+    !Number.isInteger(size) ||
+    size < 1 ||
+    size > MAX_PAGE_SIZE
+  ) {
     throw new AppError({
       code: CURATION_POST_CODES.BAD_REQUEST,
       message: CURATION_POST_MESSAGES.BAD_REQUEST,
@@ -148,6 +156,7 @@ export class CurationPostController extends Controller {
     const result = await curationPostService.getCurationPostDetail(
       parsePostId(postId),
       request.user?.uid,
+      request.user?.role === "ADMIN",
     );
 
     return success(

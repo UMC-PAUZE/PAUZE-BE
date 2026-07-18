@@ -10,14 +10,22 @@ export class CurationPostLikeRepository {
   }
 
   async create(postId: bigint, uid: string) {
-    return this.db.postLike.create({
-      data: { postId, uid },
-    });
+    try {
+      return await this.db.postLike.create({
+        data: { postId, uid },
+      });
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+        return null;
+      }
+
+      throw error;
+    }
   }
 
-  async delete(likesId: bigint) {
-    return this.db.postLike.delete({
-      where: { likesId },
+  async deleteByPostIdAndUid(postId: bigint, uid: string) {
+    return this.db.postLike.deleteMany({
+      where: { postId, uid },
     });
   }
 }

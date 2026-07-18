@@ -10,19 +10,27 @@ export class CurationPostBookmarkRepository {
   }
 
   async create(postId: bigint, uid: string) {
-    return this.db.postBookmark.create({
-      data: { postId, uid },
-    });
+    try {
+      return await this.db.postBookmark.create({
+        data: { postId, uid },
+      });
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+        return null;
+      }
+
+      throw error;
+    }
   }
 
-  async delete(bookmarkId: bigint) {
-    return this.db.postBookmark.delete({
-      where: { bookmarkId },
+  async deleteByPostIdAndUid(postId: bigint, uid: string) {
+    return this.db.postBookmark.deleteMany({
+      where: { postId, uid },
     });
   }
 
   async findManyByUid(uid: string, page: number, size: number) {
-    const where = { uid };
+    const where = { uid, post: { isPublished: true } };
 
     const [bookmarks, totalElements] = await Promise.all([
       this.db.postBookmark.findMany({
