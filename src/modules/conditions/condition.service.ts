@@ -37,17 +37,23 @@ class ConditionCreateFailedError extends AppError {
   }
 }
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const KST_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 export const getKstTodayDate = (now = new Date()): Date => {
-  const kstNow = new Date(now.getTime() + KST_OFFSET_MS);
-  return new Date(
-    Date.UTC(
-      kstNow.getUTCFullYear(),
-      kstNow.getUTCMonth(),
-      kstNow.getUTCDate(),
-    ),
+  const dateParts = Object.fromEntries(
+    KST_DATE_FORMATTER.formatToParts(now).map(({ type, value }) => [type, value]),
   );
+
+  return new Date(Date.UTC(
+    Number(dateParts.year),
+    Number(dateParts.month) - 1,
+    Number(dateParts.day),
+  ));
 };
 
 export const calculateSensitivityLevel = (score: number): SensitivityLevel => {

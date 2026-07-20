@@ -3,8 +3,20 @@ import test from "node:test";
 import {
   calculateCondition,
   calculateSensitivityLevel,
+  getKstTodayDate,
   isUniqueConstraintError,
 } from "./condition.service.js";
+
+test("uses the Asia/Seoul date across the UTC midnight boundary", () => {
+  assert.equal(
+    getKstTodayDate(new Date("2026-07-20T14:59:59.999Z")).toISOString(),
+    "2026-07-20T00:00:00.000Z",
+  );
+  assert.equal(
+    getKstTodayDate(new Date("2026-07-20T15:00:00.000Z")).toISOString(),
+    "2026-07-21T00:00:00.000Z",
+  );
+});
 
 test("calculates the documented 53-point example", () => {
   const result = calculateCondition({
