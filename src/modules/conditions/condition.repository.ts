@@ -47,8 +47,12 @@ export const insertTodayCondition = async ({
       energyLevel,
       sensitivityScore,
       sensitivityLevel,
-      triggerCodes,
       conditionDate,
+      conditionTriggers: {
+        create: triggerCodes.map((code) => ({
+          trigger: { connect: { code } },
+        })),
+      },
     },
     select: {
       conditionId: true,

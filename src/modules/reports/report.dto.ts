@@ -8,6 +8,7 @@ export type ReportTriggerCode =
 export interface ReportConditionRecord {
   conditionDate: Date;
   sensitivityScore: number;
+  triggerCodes: ReportTriggerCode[];
   sleepLevel: SleepLevel;
   noiseLevel: NoiseLevel;
   visualLevel: VisualLevel;

@@ -5,8 +5,8 @@ export const findConditionsByUserAndDateRange = async (
   uid: string,
   start: Date,
   endExclusive: Date,
-): Promise<ReportConditionRecord[]> =>
-  prisma.condition.findMany({
+): Promise<ReportConditionRecord[]> => {
+  const conditions = await prisma.condition.findMany({
     where: {
       uid,
       conditionDate: {
@@ -23,5 +23,16 @@ export const findConditionsByUserAndDateRange = async (
       visualLevel: true,
       socialLevel: true,
       energyLevel: true,
+      conditionTriggers: {
+        select: {
+          trigger: { select: { code: true } },
+        },
+      },
     },
   });
+
+  return conditions.map(({ conditionTriggers, ...condition }) => ({
+    ...condition,
+    triggerCodes: conditionTriggers.map(({ trigger }) => trigger.code) as ReportConditionRecord["triggerCodes"],
+  }));
+};

@@ -19,6 +19,7 @@ const record = (
 ): ReportConditionRecord => ({
   conditionDate: new Date(`${date}T00:00:00.000Z`),
   sensitivityScore: score,
+  triggerCodes: [],
   sleepLevel: "OVER_8",
   noiseLevel: "QUIET",
   visualLevel: "LOW",
@@ -57,9 +58,9 @@ test("throws the report-specific not-found errors for empty periods", () => {
 
 test("aggregates trigger codes by frequency with stable tie ordering", () => {
   const triggers = aggregateTopTriggers([
-    record("2026-07-13", 50, { sleepLevel: "FOUR_TO_SIX", noiseLevel: "UNCOMFORTABLE" }),
-    record("2026-07-14", 50, { noiseLevel: "HARD", energyLevel: "LOW" }),
-    record("2026-07-15", 50, { sleepLevel: "LESS_4", energyLevel: "NONE" }),
+    record("2026-07-13", 50, { triggerCodes: ["SLEEP_DEPRIVATION", "NOISE_EXPOSURE"] }),
+    record("2026-07-14", 50, { triggerCodes: ["NOISE_EXPOSURE", "LOW_ENERGY"] }),
+    record("2026-07-15", 50, { triggerCodes: ["SLEEP_DEPRIVATION", "LOW_ENERGY"] }),
   ]);
 
   assert.deepEqual(triggers, [
@@ -70,28 +71,28 @@ test("aggregates trigger codes by frequency with stable tie ordering", () => {
   assert.ok(triggers.length <= 5);
 });
 
-test("counts only answer levels scored 13 or 20 as triggers", () => {
+test("uses trigger relations stored for each condition", () => {
   assert.deepEqual(
     getTriggeredCodes(record("2026-07-13", 0)),
     [],
   );
   assert.deepEqual(
-    getTriggeredCodes(record("2026-07-14", 7, { noiseLevel: "NORMAL" })),
+    getTriggeredCodes(record("2026-07-14", 7)),
     [],
   );
   assert.deepEqual(
-    getTriggeredCodes(record("2026-07-15", 13, { noiseLevel: "UNCOMFORTABLE" })),
+    getTriggeredCodes(record("2026-07-15", 13, { triggerCodes: ["NOISE_EXPOSURE"] })),
     ["NOISE_EXPOSURE"],
   );
   assert.deepEqual(
-    getTriggeredCodes(record("2026-07-16", 20, { noiseLevel: "HARD" })),
+    getTriggeredCodes(record("2026-07-16", 20, { triggerCodes: ["NOISE_EXPOSURE"] })),
     ["NOISE_EXPOSURE"],
   );
 });
 
 test("counts a trigger at most once per condition date", () => {
   const triggers = aggregateTopTriggers([
-    record("2026-07-13", 20, { noiseLevel: "HARD" }),
+    record("2026-07-13", 20, { triggerCodes: ["NOISE_EXPOSURE"] }),
   ]);
   assert.deepEqual(triggers, [{ rank: 1, trigger: "소음 노출", count: 1 }]);
 });
@@ -99,7 +100,7 @@ test("counts a trigger at most once per condition date", () => {
 test("counts noise exposure across 18 distinct dates independently of total averages", () => {
   const records = Array.from({ length: 18 }, (_, index) =>
     record(`2026-07-${String(index + 1).padStart(2, "0")}`, index, {
-      noiseLevel: "UNCOMFORTABLE",
+      triggerCodes: ["NOISE_EXPOSURE"],
     }),
   );
   assert.deepEqual(aggregateTopTriggers(records)[0], {

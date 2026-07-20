@@ -260,25 +260,51 @@ model AudioSave {
   @@map("audio_save")
 }
 model Condition {
-  conditionId       BigInt           @id @default(autoincrement()) @map("condition_id")
-  uid               String           @db.Char(36)
+  conditionId BigInt @id @default(autoincrement()) @map("condition_id")
+  uid         String @db.Char(36)
 
-  sleepLevel        SleepLevel       @map("sleep_level")
-  noiseLevel        NoiseLevel       @map("noise_level")
-  visualLevel       VisualLevel      @map("visual_level")
-  socialLevel       SocialLevel      @map("social_level")
-  energyLevel       EnergyLevel      @map("energy_level")
+  sleepLevel  SleepLevel  @map("sleep_level")
+  noiseLevel  NoiseLevel  @map("noise_level")
+  visualLevel VisualLevel @map("visual_level")
+  socialLevel SocialLevel @map("social_level")
+  energyLevel EnergyLevel @map("energy_level")
 
-  sensitivityScore  Int              @map("sensitivity_score")
-  sensitivityLevel  SensitivityLevel @map("sensitivity_level")
-  triggerCodes      Json             @map("trigger_codes")
-  conditionDate     DateTime         @map("condition_date") @db.Date
+  sensitivityScore Int              @map("sensitivity_score")
+  sensitivityLevel SensitivityLevel @map("sensitivity_level")
+  conditionDate    DateTime         @map("condition_date") @db.Date
 
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime?        @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user              User             @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  user              User               @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  conditionTriggers ConditionTrigger[]
 
   @@unique([uid, conditionDate])
   @@map("condition")
+}
+
+model Trigger {
+  triggerId         BigInt             @id @default(autoincrement()) @map("trigger_id")
+  name              String             @db.VarChar(50)
+  code              String             @unique @db.VarChar(50)
+  description       String?            @db.Text
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  conditionTriggers ConditionTrigger[]
+
+  @@map("trigger")
+}
+
+model ConditionTrigger {
+  conditionTriggerId BigInt    @id @default(autoincrement()) @map("condition_trigger_id")
+  conditionId        BigInt    @map("condition_id")
+  triggerId          BigInt    @map("trigger_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  condition          Condition @relation(fields: [conditionId], references: [conditionId], onDelete: Cascade)
+  trigger            Trigger   @relation(fields: [triggerId], references: [triggerId], onDelete: Cascade)
+
+  @@unique([conditionId, triggerId])
+  @@index([triggerId])
+  @@map("condition_trigger")
 }

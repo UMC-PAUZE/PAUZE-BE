@@ -1,8 +1,4 @@
 import { AppError } from "../../common/errors/app.error.js";
-import {
-  CONDITION_SCORE_POLICY,
-  CONDITION_TRIGGER_THRESHOLD,
-} from "../conditions/condition.policy.js";
 import type {
   MonthlyReportDto,
   ReportConditionRecord,
@@ -91,25 +87,7 @@ const average = (records: ReportConditionRecord[]): number =>
 
 export const getTriggeredCodes = (
   record: ReportConditionRecord,
-): ReportTriggerCode[] => {
-  const triggered: ReportTriggerCode[] = [];
-  if (CONDITION_SCORE_POLICY.sleep[record.sleepLevel] >= CONDITION_TRIGGER_THRESHOLD) {
-    triggered.push("SLEEP_DEPRIVATION");
-  }
-  if (CONDITION_SCORE_POLICY.noise[record.noiseLevel] >= CONDITION_TRIGGER_THRESHOLD) {
-    triggered.push("NOISE_EXPOSURE");
-  }
-  if (CONDITION_SCORE_POLICY.visual[record.visualLevel] >= CONDITION_TRIGGER_THRESHOLD) {
-    triggered.push("VISUAL_STIMULATION");
-  }
-  if (CONDITION_SCORE_POLICY.social[record.socialLevel] >= CONDITION_TRIGGER_THRESHOLD) {
-    triggered.push("SOCIAL_ISOLATION");
-  }
-  if (CONDITION_SCORE_POLICY.energy[record.energyLevel] >= CONDITION_TRIGGER_THRESHOLD) {
-    triggered.push("LOW_ENERGY");
-  }
-  return triggered;
-};
+): ReportTriggerCode[] => record.triggerCodes;
 
 export const aggregateTopTriggers = (
   records: ReportConditionRecord[],
