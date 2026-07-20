@@ -16,5 +16,5 @@ export function parseDurationToSeconds(duration: string): number {
   if (!unit || !(unit in UNIT_TO_SECONDS)) {
     throw new Error(`Invalid duration format: ${duration}`);
   }
-  return value * UNIT_TO_SECONDS[unit]!;
+  return value * UNIT_TO_SECONDS[unit as keyof typeof UNIT_TO_SECONDS];
 }

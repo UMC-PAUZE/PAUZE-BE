@@ -1,43 +1,21 @@
 {
-  "entryFile": "src/index.ts",
-  "noImplicitAdditionalProperties": "throw-on-extras",
-  "controllerPathGlobs": ["src/**/*.controller.ts"],
-  "spec": {
-    "outputDirectory": "dist",
-    "specVersion": 3,
-    "basePath": "/api",
-    "securityDefinitions": {
-      "bearer": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
-    },
-    "specMerging": "recursive",
+    "entryFile": "src/index.ts",
+    "noImplicitAdditionalProperties": "throw-on-extras",
+    "controllerPathGlobs": ["src/**/*.controller.ts"],
     "spec": {
-      "paths": {
-        "/conditions/today": {
-          "post": {
-            "requestBody": {
-              "content": {
-                "application/json": {
-                  "example": {
-                    "sleepLevel": "FOUR_TO_SIX",
-                    "noiseLevel": "NORMAL",
-                    "visualLevel": "HIGH",
-                    "socialLevel": "SOME",
-                    "energyLevel": "LOW"
-                  }
-                }
-              }
-            }
-          }
+      "outputDirectory": "dist",
+      "specVersion": 3,
+      "basePath": "/api",
+      "securityDefinitions": {
+        "bearer": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "JWT"
         }
       }
+    },
+    "routes": {
+      "routesDir": "src/generated",
+      "authenticationModule": "./src/common/middlewares/tsoa.authentication.ts"
     }
-  },
-  "routes": {
-    "routesDir": "src/generated",
-    "authenticationModule": "./src/common/middlewares/tsoa.authentication.ts"
-  }
 }
