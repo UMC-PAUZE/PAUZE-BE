@@ -1,3 +1,11 @@
+import type {
+  EnergyLevel,
+  NoiseLevel,
+  SleepLevel,
+  SocialLevel,
+  VisualLevel,
+} from "../conditions/condition.dto.js";
+
 export type ReportTriggerCode =
   | "SLEEP_DEPRIVATION"
   | "NOISE_EXPOSURE"
@@ -83,10 +91,3 @@ export interface ReportErrorResponseDto {
   message: string;
   result: unknown[];
 }
-import type {
-  EnergyLevel,
-  NoiseLevel,
-  SleepLevel,
-  SocialLevel,
-  VisualLevel,
-} from "../conditions/condition.dto.js";
