@@ -18,6 +18,7 @@ import {
 import { AppError } from "../../../common/errors/app.error.js";
 import { success } from "../../../common/responses/response.js";
 import type { ApiSuccessResponse } from "../../../common/responses/response.js";
+import { Role } from "../../../generated/prisma/client.js";
 import type {
   CreateCurationPostRequest,
   CreateCurationPostResult,
@@ -36,13 +37,6 @@ import {
 import { curationPostService } from "../service/curation-post.service.js";
 
 const MAX_PAGE_SIZE = 50;
-
-type AuthenticatedRequest = ExpressRequest & {
-  user?: {
-    uid: string;
-    role?: string;
-  };
-};
 
 function parsePostId(postId: string): bigint {
   if (!/^\d+$/.test(postId)) {
@@ -65,7 +59,7 @@ function parsePostId(postId: string): bigint {
   return parsed;
 }
 
-function getRequiredUid(request: AuthenticatedRequest): string {
+function getRequiredUid(request: ExpressRequest): string {
   const uid = request.user?.uid;
   if (!uid) {
     throw new AppError({
@@ -78,9 +72,9 @@ function getRequiredUid(request: AuthenticatedRequest): string {
   return uid;
 }
 
-function requireAdmin(request: AuthenticatedRequest) {
+function requireAdmin(request: ExpressRequest) {
   const uid = getRequiredUid(request);
-  if (request.user?.role !== "ADMIN") {
+  if (request.user?.role !== Role.ADMIN) {
     throw new AppError({
       code: CURATION_POST_CODES.FORBIDDEN,
       message: CURATION_POST_MESSAGES.FORBIDDEN,
@@ -115,7 +109,7 @@ export class CurationPostController extends Controller {
   @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
   public async getCurationPosts(
-    @Request() request: AuthenticatedRequest,
+    @Request() request: ExpressRequest,
     @Query() categoryId?: number,
     @Query() keyword?: string,
     @Query() page = 1,
@@ -123,8 +117,8 @@ export class CurationPostController extends Controller {
   ): Promise<ApiSuccessResponse<CurationPostListResult>> {
     if (categoryId !== undefined && (!Number.isInteger(categoryId) || categoryId < 1)) {
       throw new AppError({
-        code: "BAD_REQUEST_400",
-        message: "잘못된 요청 파라미터 형식입니다.",
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.BAD_REQUEST,
         statusCode: 400,
       });
     }
@@ -150,13 +144,13 @@ export class CurationPostController extends Controller {
   @Response(400, "Bad Request")
   @Response(404, "Not Found")
   public async getCurationPostDetail(
-    @Request() request: AuthenticatedRequest,
+    @Request() request: ExpressRequest,
     @Path() postId: string,
   ): Promise<ApiSuccessResponse<CurationPostDetailResult>> {
     const result = await curationPostService.getCurationPostDetail(
       parsePostId(postId),
       request.user?.uid,
-      request.user?.role === "ADMIN",
+      request.user?.role === Role.ADMIN,
     );
 
     return success(
@@ -174,7 +168,7 @@ export class CurationPostController extends Controller {
   @Response(403, "Forbidden")
   @Response(404, "Not Found")
   public async createCurationPost(
-    @Request() request: AuthenticatedRequest,
+    @Request() request: ExpressRequest,
     @Body() body: CreateCurationPostRequest,
   ): Promise<ApiSuccessResponse<CreateCurationPostResult>> {
     requireAdmin(request);
@@ -196,7 +190,7 @@ export class CurationPostController extends Controller {
   @Response(403, "Forbidden")
   @Response(404, "Not Found")
   public async updateCurationPost(
-    @Request() request: AuthenticatedRequest,
+    @Request() request: ExpressRequest,
     @Path() postId: string,
     @Body() body: UpdateCurationPostRequest,
   ): Promise<ApiSuccessResponse<UpdateCurationPostResult>> {
@@ -221,7 +215,7 @@ export class CurationPostController extends Controller {
   @Response(403, "Forbidden")
   @Response(404, "Not Found")
   public async deleteCurationPost(
-    @Request() request: AuthenticatedRequest,
+    @Request() request: ExpressRequest,
     @Path() postId: string,
   ): Promise<ApiSuccessResponse<null>> {
     requireAdmin(request);
@@ -234,94 +228,46 @@ export class CurationPostController extends Controller {
     );
   }
 
-  @Post("{postId}/likes")
-  @Security("bearer")
-  @SuccessResponse(201, "Created")
-  @Response(400, "Bad Request")
-  @Response(401, "Unauthorized")
-  @Response(404, "Not Found")
-  @Response(409, "Conflict")
-  public async createCurationPostLike(
-    @Request() request: AuthenticatedRequest,
-    @Path() postId: string,
-  ): Promise<ApiSuccessResponse<CurationPostLikeResult>> {
-    const result = await curationPostService.createLike(
-      parsePostId(postId),
-      getRequiredUid(request),
-    );
-
-    this.setStatus(201);
-    return success(
-      CURATION_POST_CODES.CREATE_CURATION_POST_LIKE_SUCCESS,
-      CURATION_POST_MESSAGES.CREATE_CURATION_POST_LIKE_SUCCESS,
-      result,
-    );
-  }
-
-  @Delete("{postId}/likes")
+  @Patch("{postId}/likes")
   @Security("bearer")
   @SuccessResponse(200, "OK")
   @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(404, "Not Found")
-  public async deleteCurationPostLike(
-    @Request() request: AuthenticatedRequest,
+  public async toggleCurationPostLike(
+    @Request() request: ExpressRequest,
     @Path() postId: string,
   ): Promise<ApiSuccessResponse<CurationPostLikeResult>> {
-    const result = await curationPostService.deleteLike(
+    const result = await curationPostService.toggleLike(
       parsePostId(postId),
       getRequiredUid(request),
     );
 
     return success(
-      CURATION_POST_CODES.DELETE_CURATION_POST_LIKE_SUCCESS,
-      CURATION_POST_MESSAGES.DELETE_CURATION_POST_LIKE_SUCCESS,
+      CURATION_POST_CODES.TOGGLE_CURATION_POST_LIKE_SUCCESS,
+      CURATION_POST_MESSAGES.TOGGLE_CURATION_POST_LIKE_SUCCESS,
       result,
     );
   }
 
-  @Post("{postId}/bookmarks")
-  @Security("bearer")
-  @SuccessResponse(201, "Created")
-  @Response(400, "Bad Request")
-  @Response(401, "Unauthorized")
-  @Response(404, "Not Found")
-  @Response(409, "Conflict")
-  public async createCurationPostBookmark(
-    @Request() request: AuthenticatedRequest,
-    @Path() postId: string,
-  ): Promise<ApiSuccessResponse<CurationPostBookmarkResult>> {
-    const result = await curationPostService.createBookmark(
-      parsePostId(postId),
-      getRequiredUid(request),
-    );
-
-    this.setStatus(201);
-    return success(
-      CURATION_POST_CODES.CREATE_CURATION_POST_BOOKMARK_SUCCESS,
-      CURATION_POST_MESSAGES.CREATE_CURATION_POST_BOOKMARK_SUCCESS,
-      result,
-    );
-  }
-
-  @Delete("{postId}/bookmarks")
+  @Patch("{postId}/bookmarks")
   @Security("bearer")
   @SuccessResponse(200, "OK")
   @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(404, "Not Found")
-  public async deleteCurationPostBookmark(
-    @Request() request: AuthenticatedRequest,
+  public async toggleCurationPostBookmark(
+    @Request() request: ExpressRequest,
     @Path() postId: string,
   ): Promise<ApiSuccessResponse<CurationPostBookmarkResult>> {
-    const result = await curationPostService.deleteBookmark(
+    const result = await curationPostService.toggleBookmark(
       parsePostId(postId),
       getRequiredUid(request),
     );
 
     return success(
-      CURATION_POST_CODES.DELETE_CURATION_POST_BOOKMARK_SUCCESS,
-      CURATION_POST_MESSAGES.DELETE_CURATION_POST_BOOKMARK_SUCCESS,
+      CURATION_POST_CODES.TOGGLE_CURATION_POST_BOOKMARK_SUCCESS,
+      CURATION_POST_MESSAGES.TOGGLE_CURATION_POST_BOOKMARK_SUCCESS,
       result,
     );
   }
@@ -336,7 +282,7 @@ export class MyCurationBookmarkController extends Controller {
   @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
   public async getMyBookmarks(
-    @Request() request: AuthenticatedRequest,
+    @Request() request: ExpressRequest,
     @Query() page = 1,
     @Query() size = 10,
   ): Promise<ApiSuccessResponse<MyBookmarkListResult>> {

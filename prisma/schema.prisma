@@ -7,6 +7,27 @@ datasource db {
   provider = "mysql"
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SocialType {
+  KAKAO
+  LOCAL
+}
+
+enum TermName {
+  NONE
+}
+
+enum CurationCategoryName {
+  HSP_TIP   @map("HSP팁")
+  RESEARCH  @map("연구")
+  BREATHING @map("호흡법")
+  SOUND     @map("사운드")
+}
+
 model User {
   uid                  String    @id @default(uuid()) @db.Char(36)
   email                String    @unique @db.VarChar(255)
@@ -16,11 +37,11 @@ model User {
   reminderAlarmActive  Boolean   @default(true) @map("reminder_alarm_active")
   sensitiveAlarmActive Boolean   @default(true) @map("sensitive_alarm_active")
   curationAlarmActive  Boolean   @default(true) @map("curation_alarm_active")
+  birth                DateTime  @map("birth") @db.Date
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime? @updatedAt @map("updated_at")
   pushToken            String?   @map("push_token") @db.VarChar(255)
   role                 Role      @default(USER)
-  birth                DateTime  @map("birth") @db.Date
   oauths               Oauth[]
   userTerms            UserTerm[]
   postLikes            PostLike[]
@@ -66,8 +87,6 @@ model UserTerm {
   user       User      @relation(fields: [uid], references: [uid], onDelete: Cascade)
   term       Term      @relation(fields: [termId], references: [termId])
 
-  @@index([termId], map: "user_term_term_id_fkey")
-  @@index([uid], map: "user_term_uid_fkey")
   @@map("user_term")
 }
 
@@ -149,7 +168,6 @@ model AudioCategory {
   audioCode    AudioCode @relation(fields: [codeId], references: [id])
   audioGuides  AudioGuide[]
 
-  @@index([codeId], map: "audio_category_code_id_fkey")
   @@map("audio_category")
 }
 
@@ -164,16 +182,16 @@ model AudioCode {
 model AudioGuide {
   audioId    BigInt    @id @map("audio_id")
   categoryId BigInt    @map("category_id")
-  audioTitle String    @map("audio_title") @db.VarChar(50)
-  audioUrl   String    @map("audio_url") @db.Text
-  audioKey   String    @map("audio_key") @db.VarChar(255)
+  audioTitle String    @db.VarChar(50) @map("audio_title")
+  audioUrl   String    @db.Text @map("audio_url")
+  audioKey   String    @db.VarChar(255) @map("audio_key")
+
   createdAt  DateTime  @map("created_at")
   updatedAt  DateTime? @map("updated_at")
   category   AudioCategory @relation(fields: [categoryId], references: [categoryId])
   likedBy    AudioLiked[]
   savedBy    AudioSave[]
 
-  @@index([categoryId], map: "audio_guide_category_id_fkey")
   @@map("audio_guide")
 }
 
@@ -186,7 +204,6 @@ model AudioLiked {
   audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
 
   @@unique([audioId, uid])
-  @@index([uid], map: "audio_liked_uid_fkey")
   @@map("audio_liked")
 }
 
@@ -199,27 +216,7 @@ model AudioSave {
   user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
   @@unique([audioId, uid])
-  @@index([uid], map: "audio_save_uid_fkey")
   @@map("audio_save")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
 
-enum SocialType {
-  KAKAO
-  LOCAL
-}
-
-enum TermName {
-  NONE
-}
-
-enum CurationCategoryName {
-  HSP_TIP   @map("HSP팁")
-  RESEARCH  @map("연구")
-  BREATHING @map("호흡법")
-  SOUND     @map("사운드")
-}

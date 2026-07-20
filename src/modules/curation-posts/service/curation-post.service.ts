@@ -154,91 +154,53 @@ export class CurationPostService {
     return null;
   }
 
-  async createLike(
+  async toggleLike(
     postId: bigint,
     uid: string,
   ): Promise<CurationPostLikeResult> {
     await this.validatePublishedPostExists(postId);
 
-    const like = await this.curationPostLikeRepository.create(postId, uid);
-    if (!like) {
-      throw new AppError({
-        code: CURATION_POST_CODES.ALREADY_LIKED,
-        message: CURATION_POST_MESSAGES.ALREADY_LIKED,
-        statusCode: 409,
-      });
+    const existing = await this.curationPostLikeRepository.findByPostIdAndUid(
+      postId,
+      uid,
+    );
+    if (existing) {
+      await this.curationPostLikeRepository.deleteByPostIdAndUid(postId, uid);
+      return {
+        postId: Number(postId),
+        liked: false,
+      };
     }
 
+    await this.curationPostLikeRepository.create(postId, uid);
     return {
       postId: Number(postId),
       liked: true,
     };
   }
 
-  async deleteLike(
+  async toggleBookmark(
     postId: bigint,
     uid: string,
-  ): Promise<CurationPostLikeResult> {
+  ): Promise<CurationPostBookmarkResult> {
     await this.validatePublishedPostExists(postId);
 
-    const result = await this.curationPostLikeRepository.deleteByPostIdAndUid(
+    const existing = await this.curationPostBookmarkRepository.findByPostIdAndUid(
       postId,
       uid,
     );
-    if (result.count === 0) {
-      throw new AppError({
-        code: CURATION_POST_CODES.LIKE_NOT_FOUND,
-        message: CURATION_POST_MESSAGES.LIKE_NOT_FOUND,
-        statusCode: 404,
-      });
+    if (existing) {
+      await this.curationPostBookmarkRepository.deleteByPostIdAndUid(postId, uid);
+      return {
+        postId: Number(postId),
+        bookmarked: false,
+      };
     }
 
-    return {
-      postId: Number(postId),
-      liked: false,
-    };
-  }
-
-  async createBookmark(
-    postId: bigint,
-    uid: string,
-  ): Promise<CurationPostBookmarkResult> {
-    await this.validatePublishedPostExists(postId);
-
-    const bookmark = await this.curationPostBookmarkRepository.create(postId, uid);
-    if (!bookmark) {
-      throw new AppError({
-        code: CURATION_POST_CODES.ALREADY_BOOKMARKED,
-        message: CURATION_POST_MESSAGES.ALREADY_BOOKMARKED,
-        statusCode: 409,
-      });
-    }
-
+    await this.curationPostBookmarkRepository.create(postId, uid);
     return {
       postId: Number(postId),
       bookmarked: true,
-    };
-  }
-
-  async deleteBookmark(
-    postId: bigint,
-    uid: string,
-  ): Promise<CurationPostBookmarkResult> {
-    await this.validatePublishedPostExists(postId);
-
-    const result =
-      await this.curationPostBookmarkRepository.deleteByPostIdAndUid(postId, uid);
-    if (result.count === 0) {
-      throw new AppError({
-        code: CURATION_POST_CODES.BOOKMARK_NOT_FOUND,
-        message: CURATION_POST_MESSAGES.BOOKMARK_NOT_FOUND,
-        statusCode: 404,
-      });
-    }
-
-    return {
-      postId: Number(postId),
-      bookmarked: false,
     };
   }
 
