@@ -5,10 +5,19 @@ import {
   ConditionAlreadyExistsError,
   calculateCondition,
   calculateSensitivityLevel,
+  createTodayCondition,
   getKstTodayDate,
   isUniqueConstraintError,
   mapConditionCreateError,
 } from "./condition.service.js";
+
+const validCondition = {
+  sleepLevel: "OVER_8",
+  noiseLevel: "QUIET",
+  visualLevel: "LOW",
+  socialLevel: "MANY",
+  energyLevel: "ENOUGH",
+} as const;
 
 test("uses the Asia/Seoul date across the UTC midnight boundary", () => {
   assert.equal(
@@ -92,6 +101,47 @@ test("maps condition persistence errors without losing existing app errors", () 
   });
   assert.equal(mapConditionCreateError(existingError), existingError);
   assert.ok(mapConditionCreateError({ code: "P2002" }) instanceof ConditionAlreadyExistsError);
+
+  const duplicateError = new ConditionAlreadyExistsError();
+  assert.equal(mapConditionCreateError(duplicateError), duplicateError);
+});
+
+test("createTodayCondition returns 409 when today's condition exists", async () => {
+  await assert.rejects(
+    createTodayCondition("user-id", validCondition, {
+      findTodayConditionByUserId: async () => ({ conditionId: 1n }),
+      insertTodayCondition: async () => {
+        throw new Error("must not insert");
+      },
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 409 &&
+      error.code === "CONDITION_ALREADY_EXISTS",
+  );
+});
+
+test("createTodayCondition returns 500 and logs an unexpected storage error", async (t) => {
+  const loggedErrors: unknown[][] = [];
+  t.mock.method(console, "error", (...args: unknown[]) => {
+    loggedErrors.push(args);
+  });
+
+  const storageError = new Error("unexpected storage failure");
+  await assert.rejects(
+    createTodayCondition("user-id", validCondition, {
+      findTodayConditionByUserId: async () => null,
+      insertTodayCondition: async () => {
+        throw storageError;
+      },
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 500 &&
+      error.code === "CONDITION_CREATE_FAILED",
+  );
+  assert.equal(loggedErrors.length, 1);
+  assert.equal(loggedErrors[0]?.[1], storageError);
 });
 
 test("counts 13 and 20 point answers as triggers but not 0 and 7", () => {

@@ -15,6 +15,25 @@ import {
   insertTodayCondition,
 } from "./condition.repository.js";
 
+interface ConditionRepository {
+  findTodayConditionByUserId: (
+    uid: string,
+    conditionDate: Date,
+  ) => Promise<{ conditionId: bigint } | null>;
+  insertTodayCondition: (
+    params: Parameters<typeof insertTodayCondition>[0],
+  ) => Promise<{
+    conditionId: bigint;
+    sensitivityScore: number;
+    sensitivityLevel: SensitivityLevel;
+  }>;
+}
+
+const conditionRepository: ConditionRepository = {
+  findTodayConditionByUserId,
+  insertTodayCondition,
+};
+
 export class ConditionAlreadyExistsError extends AppError {
   constructor() {
     super({
@@ -123,7 +142,10 @@ const getErrorCode = (error: unknown): string | undefined =>
     : undefined;
 
 export const mapConditionCreateError = (error: unknown): AppError => {
-  if (error instanceof ConditionAlreadyExistsError || isUniqueConstraintError(error)) {
+  if (error instanceof ConditionAlreadyExistsError) {
+    return error;
+  }
+  if (isUniqueConstraintError(error)) {
     return new ConditionAlreadyExistsError();
   }
   if (error instanceof AppError) {
@@ -152,16 +174,17 @@ export const mapConditionCreateError = (error: unknown): AppError => {
 export const createTodayCondition = async (
   uid: string,
   body: CreateTodayConditionRequestDto,
+  repository: ConditionRepository = conditionRepository,
 ): Promise<CreateTodayConditionResponseDto> => {
   const conditionDate = getKstTodayDate();
 
   try {
-    if (await findTodayConditionByUserId(uid, conditionDate)) {
+    if (await repository.findTodayConditionByUserId(uid, conditionDate)) {
       throw new ConditionAlreadyExistsError();
     }
 
     const calculated = calculateCondition(body);
-    const created = await insertTodayCondition({
+    const created = await repository.insertTodayCondition({
       uid,
       ...body,
       ...calculated,
