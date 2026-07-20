@@ -37,6 +37,28 @@ class ConditionCreateFailedError extends AppError {
   }
 }
 
+class ConditionDatabaseUnavailableError extends AppError {
+  constructor() {
+    super({
+      code: "CONDITION_DATABASE_UNAVAILABLE",
+      message: "컨디션 저장소에 연결할 수 없습니다.",
+      statusCode: 503,
+      result: [],
+    });
+  }
+}
+
+class ConditionDatabaseTimeoutError extends AppError {
+  constructor() {
+    super({
+      code: "CONDITION_DATABASE_TIMEOUT",
+      message: "컨디션 저장 요청 시간이 초과되었습니다.",
+      statusCode: 504,
+      result: [],
+    });
+  }
+}
+
 const KST_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Seoul",
   year: "numeric",
@@ -92,6 +114,41 @@ export const isUniqueConstraintError = (error: unknown): boolean =>
   "code" in error &&
   error.code === "P2002";
 
+const getErrorCode = (error: unknown): string | undefined =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  typeof error.code === "string"
+    ? error.code
+    : undefined;
+
+export const mapConditionCreateError = (error: unknown): AppError => {
+  if (error instanceof ConditionAlreadyExistsError || isUniqueConstraintError(error)) {
+    return new ConditionAlreadyExistsError();
+  }
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  const errorCode = getErrorCode(error);
+  if (
+    errorCode === "P1001" ||
+    errorCode === "ECONNREFUSED" ||
+    errorCode === "ENOTFOUND" ||
+    errorCode === "PROTOCOL_CONNECTION_LOST"
+  ) {
+    return new ConditionDatabaseUnavailableError();
+  }
+  if (
+    errorCode === "P1002" ||
+    errorCode === "P2024" ||
+    errorCode === "ETIMEDOUT"
+  ) {
+    return new ConditionDatabaseTimeoutError();
+  }
+  return new ConditionCreateFailedError();
+};
+
 export const createTodayCondition = async (
   uid: string,
   body: CreateTodayConditionRequestDto,
@@ -118,9 +175,10 @@ export const createTodayCondition = async (
       triggerCodes: calculated.triggerCodes,
     };
   } catch (error) {
-    if (error instanceof ConditionAlreadyExistsError || isUniqueConstraintError(error)) {
-      throw new ConditionAlreadyExistsError();
+    const mappedError = mapConditionCreateError(error);
+    if (!(mappedError instanceof ConditionAlreadyExistsError)) {
+      console.error("[conditions] 오늘의 컨디션 저장 실패", error);
     }
-    throw new ConditionCreateFailedError();
+    throw mappedError;
   }
 };

@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { AppError } from "../../common/errors/app.error.js";
 import {
+  ConditionAlreadyExistsError,
   calculateCondition,
   calculateSensitivityLevel,
   getKstTodayDate,
   isUniqueConstraintError,
+  mapConditionCreateError,
 } from "./condition.service.js";
 
 test("uses the Asia/Seoul date across the UTC midnight boundary", () => {
@@ -71,6 +74,24 @@ test("uses the specified sensitivity boundaries", () => {
 test("recognizes duplicate-condition database errors", () => {
   assert.equal(isUniqueConstraintError({ code: "P2002" }), true);
   assert.equal(isUniqueConstraintError({ code: "P2025" }), false);
+});
+
+test("maps condition persistence errors without losing existing app errors", () => {
+  assert.equal(mapConditionCreateError({ code: "P2002" }).statusCode, 409);
+  assert.equal(mapConditionCreateError({ code: "P1001" }).statusCode, 503);
+  assert.equal(mapConditionCreateError({ code: "ECONNREFUSED" }).statusCode, 503);
+  assert.equal(mapConditionCreateError({ code: "P1002" }).statusCode, 504);
+  assert.equal(mapConditionCreateError({ code: "P2024" }).statusCode, 504);
+  assert.equal(mapConditionCreateError({ code: "ETIMEDOUT" }).statusCode, 504);
+  assert.equal(mapConditionCreateError(new Error("unknown")).statusCode, 500);
+
+  const existingError = new AppError({
+    code: "EXISTING_ERROR",
+    message: "existing",
+    statusCode: 422,
+  });
+  assert.equal(mapConditionCreateError(existingError), existingError);
+  assert.ok(mapConditionCreateError({ code: "P2002" }) instanceof ConditionAlreadyExistsError);
 });
 
 test("counts 13 and 20 point answers as triggers but not 0 and 7", () => {
