@@ -7,6 +7,9 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/signup",
   "/auth/login",
   "/auth/refresh",
+  "/auth/kakao",
+  "/auth/email/verify",
+  "/auth/link",
 ];
 
 const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts", "/audio-guides"];

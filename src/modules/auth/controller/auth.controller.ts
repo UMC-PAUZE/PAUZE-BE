@@ -17,8 +17,17 @@ import { AppError } from "../../../common/errors/app.error.js";
 import type {
   AuthMeResultDto,
   AuthTokenResultDto,
+  EmailCodeSentResultDto,
+  EmailVerifiedAskLinkResultDto,
+  EmailVerifyRequestDto,
+  KakaoConfirmRequestDto,
+  KakaoLoginRequestDto,
+  KakaoSignupRequiredResultDto,
+  KakaoSignupRequestDto,
+  LinkAccountRequestDto,
   LocalLoginRequestDto,
   LocalSignupRequestDto,
+  LogoutRequestDto,
   RefreshTokenRequestDto,
   RefreshTokenResultDto,
 } from "../dto/auth.dto.js";
@@ -29,18 +38,17 @@ import { authService } from "../service/auth.service.js";
 @Tags("Auth")
 export class AuthController extends Controller {
   @Post("signup")
-  @SuccessResponse(201, "Created")
+  @SuccessResponse(200, "OK")
   @Response(400, "Bad Request")
   @Response(409, "Conflict")
   @Response(500, "Internal Server Error")
   public async signup(
     @Body() body: LocalSignupRequestDto
-  ): Promise<ApiSuccessResponse<AuthTokenResultDto>> {
+  ): Promise<ApiSuccessResponse<EmailCodeSentResultDto>> {
     const result = await authService.signup(body);
-    this.setStatus(201);
     return success(
-      AUTH_CODES.LOCAL_SIGNUP_SUCCESS,
-      AUTH_MESSAGES.LOCAL_SIGNUP_SUCCESS,
+      AUTH_CODES.EMAIL_CODE_SENT,
+      AUTH_MESSAGES.EMAIL_CODE_SENT,
       result
     );
   }
@@ -54,6 +62,125 @@ export class AuthController extends Controller {
   ): Promise<ApiSuccessResponse<AuthTokenResultDto>> {
     const result = await authService.login(body);
     return success(AUTH_CODES.LOGIN_SUCCESS, AUTH_MESSAGES.LOGIN_SUCCESS, result);
+  }
+
+  @Post("email/verify")
+  @SuccessResponse(200, "OK")
+  @Response(201, "Created")
+  @Response(400, "Bad Request")
+  public async verifyEmail(
+    @Body() body: EmailVerifyRequestDto
+  ): Promise<
+    ApiSuccessResponse<AuthTokenResultDto | EmailVerifiedAskLinkResultDto>
+  > {
+    const result = await authService.verifyEmail(body);
+
+    if ("accessToken" in result) {
+      this.setStatus(201);
+      return success(
+        AUTH_CODES.LOCAL_SIGNUP_SUCCESS,
+        AUTH_MESSAGES.LOCAL_SIGNUP_SUCCESS,
+        result
+      );
+    }
+
+    return success(
+      AUTH_CODES.EMAIL_VERIFIED,
+      AUTH_MESSAGES.EMAIL_VERIFIED,
+      result
+    );
+  }
+
+  @Post("signup/kakao-confirm")
+  @SuccessResponse(200, "OK")
+  @Response(401, "Unauthorized")
+  @Response(409, "Conflict")
+  public async kakaoConfirm(
+    @Body() body: KakaoConfirmRequestDto
+  ): Promise<ApiSuccessResponse<EmailCodeSentResultDto>> {
+    const result = await authService.kakaoConfirm(body);
+    return success(
+      AUTH_CODES.EMAIL_CODE_SENT,
+      AUTH_MESSAGES.EMAIL_CODE_SENT,
+      result
+    );
+  }
+
+  @Post("link")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  public async linkAccount(
+    @Body() body: LinkAccountRequestDto
+  ): Promise<ApiSuccessResponse<AuthTokenResultDto>> {
+    const result = await authService.linkAccount(body);
+    return success(AUTH_CODES.LINK_SUCCESS, AUTH_MESSAGES.LINK_SUCCESS, result);
+  }
+
+  @Post("kakao")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  @Response(409, "Conflict")
+  @Response(500, "Internal Server Error")
+  public async kakaoLogin(
+    @Body() body: KakaoLoginRequestDto
+  ): Promise<
+    ApiSuccessResponse<AuthTokenResultDto | KakaoSignupRequiredResultDto>
+  > {
+    const result = await authService.kakaoLogin(body);
+
+    if ("accessToken" in result) {
+      return success(
+        AUTH_CODES.KAKAO_LOGIN_SUCCESS,
+        AUTH_MESSAGES.KAKAO_LOGIN_SUCCESS,
+        result
+      );
+    }
+
+    return success(
+      AUTH_CODES.KAKAO_SIGNUP_REQUIRED,
+      AUTH_MESSAGES.KAKAO_SIGNUP_REQUIRED,
+      result
+    );
+  }
+
+  @Post("kakao/signup")
+  @SuccessResponse(201, "Created")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  @Response(409, "Conflict")
+  public async kakaoSignup(
+    @Body() body: KakaoSignupRequestDto
+  ): Promise<ApiSuccessResponse<AuthTokenResultDto>> {
+    const result = await authService.kakaoSignup(body);
+    this.setStatus(201);
+    return success(
+      AUTH_CODES.KAKAO_SIGNUP_SUCCESS,
+      AUTH_MESSAGES.KAKAO_SIGNUP_SUCCESS,
+      result
+    );
+  }
+
+  @Post("logout")
+  @Security("bearer")
+  @SuccessResponse(200, "OK")
+  @Response(401, "Unauthorized")
+  public async logout(
+    @Request() request: ExpressRequest,
+    @Body() body: LogoutRequestDto = {}
+  ): Promise<ApiSuccessResponse<null>> {
+    const uid = request.user?.uid;
+    if (!uid) {
+      throw new AppError({
+        code: AUTH_CODES.UNAUTHORIZED,
+        message: AUTH_MESSAGES.UNAUTHORIZED,
+        statusCode: 401,
+      });
+    }
+
+    await authService.logout(uid, body ?? {});
+    return success(AUTH_CODES.LOGOUT_SUCCESS, AUTH_MESSAGES.LOGOUT_SUCCESS, null);
   }
 
   @Post("refresh")
@@ -84,8 +211,8 @@ export class AuthController extends Controller {
     const uid = request.user?.uid;
     if (!uid) {
       throw new AppError({
-        code: "AUTH_UNAUTHORIZED_401",
-        message: "인증이 필요합니다.",
+        code: AUTH_CODES.UNAUTHORIZED,
+        message: AUTH_MESSAGES.UNAUTHORIZED,
         statusCode: 401,
       });
     }
