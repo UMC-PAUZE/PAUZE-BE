@@ -62,8 +62,8 @@ export interface CreateCurationPostRequest {
   categoryId: number;
   title: string;
   content: string;
-  source?: string;
-  thumbnailUrl?: string;
+  source?: string | null;
+  thumbnailUrl?: string | null;
   isPublished?: boolean;
   estimatedReadTime: number;
 }

@@ -32,6 +32,15 @@ const SUMMARY_LENGTH = 50;
 const MAX_TITLE_LENGTH = 255;
 const MAX_SOURCE_LENGTH = 255;
 
+function isValidUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export class CurationPostService {
   constructor(
     private readonly curationPostRepository: CurationPostRepository,
@@ -116,6 +125,7 @@ export class CurationPostService {
   ): Promise<CreateCurationPostResult> {
     this.validateCreateRequest(data);
     await this.validateCategoryExists(BigInt(data.categoryId));
+    await this.validateTitleNotDuplicated(BigInt(data.categoryId), data.title);
 
     const post = await this.curationPostRepository.create(data);
 
@@ -165,14 +175,31 @@ export class CurationPostService {
       uid,
     );
     if (existing) {
-      await this.curationPostLikeRepository.deleteByPostIdAndUid(postId, uid);
+      const deleted = await this.curationPostLikeRepository.deleteByPostIdAndUid(
+        postId,
+        uid,
+      );
+      if (deleted.count === 0) {
+        throw new AppError({
+          code: CURATION_POST_CODES.LIKE_DELETE_CONFLICT,
+          message: CURATION_POST_MESSAGES.LIKE_DELETE_CONFLICT,
+          statusCode: 409,
+        });
+      }
       return {
         postId: Number(postId),
         liked: false,
       };
     }
 
-    await this.curationPostLikeRepository.create(postId, uid);
+    const created = await this.curationPostLikeRepository.create(postId, uid);
+    if (!created) {
+      throw new AppError({
+        code: CURATION_POST_CODES.LIKE_CREATE_CONFLICT,
+        message: CURATION_POST_MESSAGES.LIKE_CREATE_CONFLICT,
+        statusCode: 409,
+      });
+    }
     return {
       postId: Number(postId),
       liked: true,
@@ -190,14 +217,35 @@ export class CurationPostService {
       uid,
     );
     if (existing) {
-      await this.curationPostBookmarkRepository.deleteByPostIdAndUid(postId, uid);
+      const deleted =
+        await this.curationPostBookmarkRepository.deleteByPostIdAndUid(
+          postId,
+          uid,
+        );
+      if (deleted.count === 0) {
+        throw new AppError({
+          code: CURATION_POST_CODES.BOOKMARK_DELETE_CONFLICT,
+          message: CURATION_POST_MESSAGES.BOOKMARK_DELETE_CONFLICT,
+          statusCode: 409,
+        });
+      }
       return {
         postId: Number(postId),
         bookmarked: false,
       };
     }
 
-    await this.curationPostBookmarkRepository.create(postId, uid);
+    const created = await this.curationPostBookmarkRepository.create(
+      postId,
+      uid,
+    );
+    if (!created) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BOOKMARK_CREATE_CONFLICT,
+        message: CURATION_POST_MESSAGES.BOOKMARK_CREATE_CONFLICT,
+        statusCode: 409,
+      });
+    }
     return {
       postId: Number(postId),
       bookmarked: true,
@@ -271,20 +319,93 @@ export class CurationPostService {
     }
   }
 
+  private async validateTitleNotDuplicated(categoryId: bigint, title: string) {
+    const existing = await this.curationPostRepository.findByCategoryIdAndTitle(
+      categoryId,
+      title,
+    );
+    if (existing) {
+      throw new AppError({
+        code: CURATION_POST_CODES.CURATION_POST_TITLE_DUPLICATED,
+        message: CURATION_POST_MESSAGES.CURATION_POST_TITLE_DUPLICATED,
+        statusCode: 409,
+      });
+    }
+  }
+
   private validateCreateRequest(data: CreateCurationPostRequest) {
+    if (!Number.isInteger(data.categoryId) || data.categoryId < 1) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.INVALID_CATEGORY_ID,
+        statusCode: 400,
+      });
+    }
+
     if (
-      !Number.isInteger(data.categoryId) ||
-      data.categoryId < 1 ||
-      !data.title?.trim() ||
-      !data.content?.trim() ||
-      !Number.isInteger(data.estimatedReadTime) ||
-      data.estimatedReadTime < 1 ||
-      data.title.length > MAX_TITLE_LENGTH ||
-      (data.source !== undefined && data.source.length > MAX_SOURCE_LENGTH)
+      typeof data.title !== "string" ||
+      !data.title.trim() ||
+      data.title.length > MAX_TITLE_LENGTH
     ) {
       throw new AppError({
         code: CURATION_POST_CODES.BAD_REQUEST,
-        message: CURATION_POST_MESSAGES.REQUIRED_FIELDS_MISSING,
+        message: CURATION_POST_MESSAGES.INVALID_TITLE,
+        statusCode: 400,
+      });
+    }
+
+    if (typeof data.content !== "string" || !data.content.trim()) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.INVALID_CONTENT,
+        statusCode: 400,
+      });
+    }
+
+    if (
+      !Number.isInteger(data.estimatedReadTime) ||
+      data.estimatedReadTime < 1
+    ) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.INVALID_ESTIMATED_READ_TIME,
+        statusCode: 400,
+      });
+    }
+
+    if (
+      data.source !== undefined &&
+      data.source !== null &&
+      (typeof data.source !== "string" ||
+        !data.source.trim() ||
+        data.source.length > MAX_SOURCE_LENGTH)
+    ) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.INVALID_SOURCE,
+        statusCode: 400,
+      });
+    }
+
+    if (
+      data.thumbnailUrl !== undefined &&
+      data.thumbnailUrl !== null &&
+      (typeof data.thumbnailUrl !== "string" || !isValidUrl(data.thumbnailUrl))
+    ) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.INVALID_THUMBNAIL_URL,
+        statusCode: 400,
+      });
+    }
+
+    if (
+      data.isPublished !== undefined &&
+      typeof data.isPublished !== "boolean"
+    ) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.INVALID_IS_PUBLISHED,
         statusCode: 400,
       });
     }

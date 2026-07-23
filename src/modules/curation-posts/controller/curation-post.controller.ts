@@ -167,6 +167,7 @@ export class CurationPostController extends Controller {
   @Response(401, "Unauthorized")
   @Response(403, "Forbidden")
   @Response(404, "Not Found")
+  @Response(409, "Conflict")
   public async createCurationPost(
     @Request() request: ExpressRequest,
     @Body() body: CreateCurationPostRequest,
@@ -234,6 +235,7 @@ export class CurationPostController extends Controller {
   @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(404, "Not Found")
+  @Response(409, "Conflict")
   public async toggleCurationPostLike(
     @Request() request: ExpressRequest,
     @Path() postId: string,
@@ -256,6 +258,7 @@ export class CurationPostController extends Controller {
   @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(404, "Not Found")
+  @Response(409, "Conflict")
   public async toggleCurationPostBookmark(
     @Request() request: ExpressRequest,
     @Path() postId: string,

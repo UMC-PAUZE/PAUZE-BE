@@ -52,6 +52,13 @@ export class CurationPostRepository {
     });
   }
 
+  async findByCategoryIdAndTitle(categoryId: bigint, title: string) {
+    return this.db.curationPost.findFirst({
+      where: { categoryId, title },
+      select: { postId: true },
+    });
+  }
+
   async findDetailById(
     postId: bigint,
     userId?: string,
