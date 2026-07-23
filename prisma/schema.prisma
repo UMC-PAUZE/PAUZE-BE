@@ -116,6 +116,7 @@ model CurationPost {
   likes             PostLike[]
   bookmarks         PostBookmark[]
 
+  @@unique([categoryId, title])
   @@index([categoryId], map: "curation_posts_category_id_fkey")
   @@map("curation_posts")
 }

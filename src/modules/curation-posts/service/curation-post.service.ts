@@ -129,9 +129,18 @@ export class CurationPostService {
   ): Promise<CreateCurationPostResult> {
     this.validateCreateRequest(data);
     await this.validateCategoryExists(BigInt(data.categoryId));
+    // UX 피드백용 사전 검사입니다. 동시 요청에 대한 최종 방어는 DB의 유니크 제약(categoryId, title)과
+    // 아래 create() 결과의 null 체크(P2002 매핑)가 담당합니다.
     await this.validateTitleNotDuplicated(BigInt(data.categoryId), data.title);
 
     const post = await this.curationPostRepository.create(data);
+    if (!post) {
+      throw new AppError({
+        code: CURATION_POST_CODES.CURATION_POST_TITLE_DUPLICATED,
+        message: CURATION_POST_MESSAGES.CURATION_POST_TITLE_DUPLICATED,
+        statusCode: 409,
+      });
+    }
 
     return {
       postId: Number(post.postId),

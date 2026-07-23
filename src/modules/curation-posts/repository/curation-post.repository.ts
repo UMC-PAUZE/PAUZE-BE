@@ -151,19 +151,27 @@ export class CurationPostRepository {
   }
 
   async create(data: CreateCurationPostRequest) {
-    return this.db.curationPost.create({
-      data: {
-        title: data.title,
-        content: data.content,
-        source: data.source,
-        thumbnailUrl: data.thumbnailUrl,
-        isPublished: data.isPublished ?? true,
-        estimatedReadTime: data.estimatedReadTime,
-        category: {
-          connect: { categoryId: BigInt(data.categoryId) },
+    try {
+      return await this.db.curationPost.create({
+        data: {
+          title: data.title,
+          content: data.content,
+          source: data.source,
+          thumbnailUrl: data.thumbnailUrl,
+          isPublished: data.isPublished ?? true,
+          estimatedReadTime: data.estimatedReadTime,
+          category: {
+            connect: { categoryId: BigInt(data.categoryId) },
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+        return null;
+      }
+
+      throw error;
+    }
   }
 
   async update(postId: bigint, data: UpdateCurationPostRequest) {
