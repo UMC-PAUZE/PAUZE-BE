@@ -38,10 +38,22 @@ export class CurationPostBookmarkRepository {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * size,
         take: size,
-        include: {
+        select: {
+          bookmarkId: true,
+          postId: true,
+          createdAt: true,
           post: {
-            include: {
-              category: true,
+            select: {
+              categoryId: true,
+              title: true,
+              content: true,
+              estimatedReadTime: true,
+              thumbnailUrl: true,
+              category: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },

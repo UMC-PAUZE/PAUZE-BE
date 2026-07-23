@@ -91,7 +91,9 @@ export class CurationPostRepository {
 
     const where = {
       isPublished: true,
-      ...(categoryId ? { categoryId: BigInt(categoryId) } : {}),
+      ...(categoryId !== undefined
+        ? { categoryId: BigInt(categoryId) }
+        : {}),
       ...(keyword
         ? {
             OR: [
@@ -108,18 +110,33 @@ export class CurationPostRepository {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * size,
         take: size,
-        include: {
-          category: true,
+        select: {
+          postId: true,
+          categoryId: true,
+          title: true,
+          content: true,
+          source: true,
+          thumbnailUrl: true,
+          viewCount: true,
+          estimatedReadTime: true,
+          createdAt: true,
+          category: {
+            select: {
+              name: true,
+            },
+          },
           likes: userId
             ? {
                 where: { uid: userId },
                 select: { likesId: true },
+                take: 1,
               }
             : false,
           bookmarks: userId
             ? {
                 where: { uid: userId },
                 select: { bookmarkId: true },
+                take: 1,
               }
             : false,
           _count: {

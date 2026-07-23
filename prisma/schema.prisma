@@ -29,26 +29,26 @@ enum CurationCategoryName {
 }
 
 model User {
-  uid                  String    @id @default(uuid()) @db.Char(36)
-  email                String    @unique @db.VarChar(255)
-  nickname             String    @db.VarChar(255)
-  profileImageUrl      String?   @map("profile_image_url") @db.Text
-  profileS3Key         String?   @map("profile_s3_key") @db.VarChar(255)
-  reminderAlarmActive  Boolean   @default(true) @map("reminder_alarm_active")
-  sensitiveAlarmActive Boolean   @default(true) @map("sensitive_alarm_active")
-  curationAlarmActive  Boolean   @default(true) @map("curation_alarm_active")
-  birth                DateTime  @map("birth") @db.Date
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime? @updatedAt @map("updated_at")
-  pushToken            String?   @map("push_token") @db.VarChar(255)
-  role                 Role      @default(USER)
-  oauths               Oauth[]
-  userTerms            UserTerm[]
-  postLikes            PostLike[]
-  postBookmarks        PostBookmark[]
-  searchHistories      SearchHistory[]
-  audioLikes           AudioLiked[]
-  audioSaves           AudioSave[]
+  uid                   String     @id @default(uuid()) @db.Char(36)
+  email                 String     @unique @db.VarChar(255)
+  nickname              String     @db.VarChar(255)
+  profileImageUrl       String?    @map("profile_image_url") @db.Text
+  profileS3Key          String?    @map("profile_s3_key") @db.VarChar(255)
+  reminderAlarmActive   Boolean    @default(true) @map("reminder_alarm_active")
+  sensitiveAlarmActive  Boolean    @default(true) @map("sensitive_alarm_active")
+  curationAlarmActive   Boolean    @default(true) @map("curation_alarm_active")
+  birth                 DateTime   @map("birth") @db.Date
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime?  @updatedAt @map("updated_at")
+  pushToken             String?    @map("push_token") @db.VarChar(255)
+  role                  Role       @default(USER)
+  oauths                Oauth[]
+  userTerms             UserTerm[]
+  postLikes             PostLike[]
+  postBookmarks         PostBookmark[]
+  searchHistories       SearchHistory[]
+  audioLikes            AudioLiked[]
+  audioSaves            AudioSave[]
 
   @@map("users")
 }
@@ -101,17 +101,17 @@ model CurationCategory {
 }
 
 model CurationPost {
-  postId            BigInt    @id @default(autoincrement()) @map("post_id")
-  title             String    @db.VarChar(255)
-  content           String    @db.Text
-  source            String?   @db.VarChar(255)
-  thumbnailUrl      String?   @map("thumbnail_url") @db.Text
-  viewCount         Int       @default(0) @map("view_count")
-  isPublished       Boolean   @default(true) @map("is_published")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime? @updatedAt @map("updated_at")
-  categoryId        BigInt    @map("category_id")
-  estimatedReadTime Int       @map("estimated_read_time")
+  postId            BigInt           @id @default(autoincrement()) @map("post_id")
+  title             String           @db.VarChar(255)
+  content           String           @db.Text
+  source            String?          @db.VarChar(255)
+  thumbnailUrl      String?          @map("thumbnail_url") @db.Text
+  viewCount         Int              @default(0) @map("view_count")
+  isPublished       Boolean          @default(true) @map("is_published")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime?        @updatedAt @map("updated_at")
+  categoryId        BigInt           @map("category_id")
+  estimatedReadTime Int              @map("estimated_read_time")
   category          CurationCategory @relation(fields: [categoryId], references: [categoryId])
   likes             PostLike[]
   bookmarks         PostBookmark[]
@@ -121,10 +121,10 @@ model CurationPost {
 }
 
 model PostLike {
-  likesId   BigInt   @id @default(autoincrement()) @map("likes_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  postId    BigInt   @map("post_id")
-  uid       String   @db.Char(36)
+  likesId   BigInt       @id @default(autoincrement()) @map("likes_id")
+  createdAt DateTime     @default(now()) @map("created_at")
+  postId    BigInt       @map("post_id")
+  uid       String       @db.Char(36)
   post      CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
   user      User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
@@ -135,10 +135,10 @@ model PostLike {
 }
 
 model PostBookmark {
-  bookmarkId BigInt   @id @default(autoincrement()) @map("bookmark_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  postId     BigInt   @map("post_id")
-  uid        String   @db.Char(36)
+  bookmarkId BigInt       @id @default(autoincrement()) @map("bookmark_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  postId     BigInt       @map("post_id")
+  uid        String       @db.Char(36)
   post       CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
   user       User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
@@ -159,21 +159,26 @@ model SearchHistory {
   @@map("search_histories")
 }
 
+// 즉각 진정하기 - 청각 안정
+
 model AudioCategory {
   categoryId   BigInt    @id @map("category_id")
-  categoryName String    @map("category_name") @db.VarChar(50)
-  createdAt    DateTime  @map("created_at")
-  updatedAt    DateTime? @map("updated_at")
+  categoryName String    @db.VarChar(50) @map("category_name")
+  
+  // 외래키로 변경
   codeId       Int       @map("code_id")
   audioCode    AudioCode @relation(fields: [codeId], references: [id])
+  
+  createdAt    DateTime  @map("created_at")
+  updatedAt    DateTime? @map("updated_at")
   audioGuides  AudioGuide[]
 
   @@map("audio_category")
 }
 
 model AudioCode {
-  id         Int             @id @default(autoincrement())
-  codeName   String          @unique @map("code_name") @db.VarChar(50)
+  id        Int             @id @default(autoincrement())
+  codeName  String          @unique @db.VarChar(50) @map("code_name") // NATURE_SOUND 등 들어옴
   categories AudioCategory[]
 
   @@map("audio_code")
@@ -185,9 +190,9 @@ model AudioGuide {
   audioTitle String    @db.VarChar(50) @map("audio_title")
   audioUrl   String    @db.Text @map("audio_url")
   audioKey   String    @db.VarChar(255) @map("audio_key")
-
   createdAt  DateTime  @map("created_at")
   updatedAt  DateTime? @map("updated_at")
+
   category   AudioCategory @relation(fields: [categoryId], references: [categoryId])
   likedBy    AudioLiked[]
   savedBy    AudioSave[]
@@ -196,10 +201,11 @@ model AudioGuide {
 }
 
 model AudioLiked {
-  likedId   BigInt   @id @default(autoincrement()) @map("liked_id")
-  audioId   BigInt   @map("audio_id")
-  uid       String   @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
+  likedId   BigInt     @id @default(autoincrement()) @map("liked_id")
+  audioId   BigInt     @map("audio_id")
+  uid       String     @db.Char(36)
+  createdAt DateTime   @default(now()) @map("created_at")
+
   user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
   audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
 
@@ -208,15 +214,14 @@ model AudioLiked {
 }
 
 model AudioSave {
-  saveId    BigInt   @id @default(autoincrement()) @map("save_id")
-  audioId   BigInt   @map("audio_id")
-  uid       String   @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
+  saveId    BigInt     @id @default(autoincrement()) @map("save_id")
+  audioId   BigInt     @map("audio_id")
+  uid       String     @db.Char(36)
+  createdAt DateTime   @default(now()) @map("created_at")
+
   audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
   user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
   @@unique([audioId, uid])
   @@map("audio_save")
 }
-
-

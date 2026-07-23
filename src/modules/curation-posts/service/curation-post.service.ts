@@ -51,6 +51,10 @@ export class CurationPostService {
   async getCurationPosts(
     query: CurationPostListQuery,
   ): Promise<CurationPostListResult> {
+    if (query.categoryId !== undefined) {
+      await this.validateCategoryExists(BigInt(query.categoryId));
+    }
+
     const { posts, totalElements } =
       await this.curationPostRepository.findMany(query);
 
