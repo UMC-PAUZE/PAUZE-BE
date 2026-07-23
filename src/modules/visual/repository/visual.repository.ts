@@ -5,7 +5,7 @@ export class VisualGuideRepository {
     constructor(private readonly db: PrismaClient) {}
 
     async findByKey(visualKey: string) {
-        return this.db.visualGuide.findFirst({
+        return this.db.visualGuide.findUnique({
             where: { visualKey },
             select: {
                 visualKey: true,

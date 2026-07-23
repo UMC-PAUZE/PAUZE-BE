@@ -224,7 +224,7 @@ model VisualGuide {
   visualTitle   String    @map("visual_title")
   visualContent String    @db.Text @map("visual_content")
   visualUrl     String    @db.Text @map("visual_url")
-  visualKey     String    @db.VarChar(255) @map("visual_key")
+  visualKey     String    @unique @db.VarChar(255) @map("visual_key")
   createdAt     DateTime  @map("created_at")
   updatedAt     DateTime? @map("updated_at")
 
