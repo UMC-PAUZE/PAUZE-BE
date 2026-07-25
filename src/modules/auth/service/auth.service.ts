@@ -227,6 +227,8 @@ export class AuthService {
         user: this.toAuthUser(user),
       };
     } catch (error) {
+      console.error("회원가입 실제 오류:", error);
+
       if (error instanceof AppError) {
         throw error;
       }
