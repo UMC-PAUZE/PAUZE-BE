@@ -367,7 +367,7 @@ model SensitivityReport {
   triggerRanks ReportTriggerRank[]
   insights     ReportInsight[]
 
-  @@index([uid, reportType, periodStart, periodEnd])
+  @@unique([uid, reportType, periodStart, periodEnd])
   @@map("sensitivity_report")
 }
 

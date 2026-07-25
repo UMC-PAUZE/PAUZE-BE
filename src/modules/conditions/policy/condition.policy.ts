@@ -29,10 +29,10 @@ export const CONDITION_SCORE_POLICY = {
     VERY_HIGH: 20,
   } satisfies Record<VisualLevel, number>,
   social: {
-    MANY: 0,
-    SOME: 7,
-    LITTLE: 13,
-    ALONE: 20,
+    ALONE: 0,
+    LITTLE: 7,
+    SOME: 13,
+    MANY: 20,
   } satisfies Record<SocialLevel, number>,
   energy: {
     ENOUGH: 0,

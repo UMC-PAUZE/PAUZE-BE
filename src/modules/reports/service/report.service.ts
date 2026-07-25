@@ -1,4 +1,21 @@
 import { AppError } from "../../../common/errors/app.error.js";
+import { calculateAccumulatedFatigue } from "../calculator/accumulated-fatigue.calculator.js";
+import { calculateHardestDay } from "../calculator/hardest-day.calculator.js";
+import type {
+  InsightCalculationContext,
+  ReportPeriodType,
+  TriggerRankMetric,
+} from "../calculator/insight.types.js";
+import { calculatePauzeEffect } from "../calculator/pauze-effect.calculator.js";
+import { calculateRecoverySpeed } from "../calculator/recovery-speed.calculator.js";
+import {
+  average,
+  roundOne,
+  toKstDateKey,
+} from "../calculator/score.util.js";
+import { calculateSleepCorrelation } from "../calculator/sleep-correlation.calculator.js";
+import { calculateTopTrigger } from "../calculator/top-trigger.calculator.js";
+import { calculateTriggerCombination } from "../calculator/trigger-combination.calculator.js";
 import type {
   MonthlyReportDto,
   ReportConditionRecord,
@@ -9,14 +26,17 @@ import type {
 } from "../dto/report.dto.js";
 import {
   MonthlyReportFetchFailedError,
-  MonthlyReportNotFoundError,
   WeeklyReportFetchFailedError,
-  WeeklyReportNotFoundError,
 } from "../errors/report.errors.js";
 import {
-  countPauzeUsagesByUserAndDateRange,
   findConditionsByUserAndDateRange,
+  findPauzeUsagesByUserAndDateRange,
+  findStoredReport,
+  replaceStoredReport,
 } from "../repository/report.repository.js";
+import { selectInsights } from "../selector/insight.selector.js";
+import { createInsightContent } from "../template/insight-template.service.js";
+import { validateInsightContent } from "../validator/insight.validator.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -31,29 +51,18 @@ const DAY_LONG_NAMES = [
   "토요일",
 ] as const;
 
-const TRIGGER_ORDER: readonly ReportTriggerCode[] = [
-  "SLEEP_DEPRIVATION",
-  "NOISE_EXPOSURE",
-  "VISUAL_OVERLOAD",
-  "SOCIAL_FATIGUE",
-  "ENERGY_DEPLETION",
-];
-
-const TRIGGER_LABELS: Record<ReportTriggerCode, string> = {
-  SLEEP_DEPRIVATION: "수면시간",
-  NOISE_EXPOSURE: "소음 노출",
-  VISUAL_OVERLOAD: "시각 과부하",
-  SOCIAL_FATIGUE: "사회 피로",
-  ENERGY_DEPLETION: "에너지 소진",
-};
-
 export interface DateRange {
   start: Date;
+  periodEnd: Date;
   endExclusive: Date;
+  calculationEndExclusive: Date;
 }
 
 const addDays = (date: Date, days: number): Date =>
   new Date(date.getTime() + days * DAY_MS);
+
+const toUtcInstantFromKstDate = (date: Date): Date =>
+  new Date(date.getTime() - KST_OFFSET_MS);
 
 const toKstCalendarDate = (now: Date): Date => {
   const shifted = new Date(now.getTime() + KST_OFFSET_MS);
@@ -70,23 +79,35 @@ export const getWeeklyRange = (now = new Date()): DateRange => {
   const today = toKstCalendarDate(now);
   const mondayOffset = (today.getUTCDay() + 6) % 7;
   const start = addDays(today, -mondayOffset);
-  return { start, endExclusive: addDays(start, 7) };
+  const endExclusive = addDays(start, 7);
+  return {
+    start,
+    periodEnd: addDays(endExclusive, -1),
+    endExclusive,
+    calculationEndExclusive: addDays(today, 1),
+  };
 };
 
 export const getMonthlyRange = (now = new Date()): DateRange => {
   const today = toKstCalendarDate(now);
-  const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  const start = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+  );
   const endExclusive = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1),
   );
-  return { start, endExclusive };
+  return {
+    start,
+    periodEnd: addDays(endExclusive, -1),
+    endExclusive,
+    calculationEndExclusive: addDays(today, 1),
+  };
 };
 
-const average = (records: ReportConditionRecord[]): number =>
-  Math.round(
-    records.reduce((sum, record) => sum + record.sensitivityScore, 0) /
-      records.length,
-  );
+const reportAverage = (records: ReportConditionRecord[]): number =>
+  records.length === 0
+    ? 0
+    : roundOne(average(records.map(({ sensitivityScore }) => sensitivityScore)));
 
 export const getTriggeredCodes = (
   record: ReportConditionRecord,
@@ -95,56 +116,18 @@ export const getTriggeredCodes = (
 export const aggregateTopTriggers = (
   records: ReportConditionRecord[],
 ): TopTriggerDto[] => {
-  const counts = new Map<ReportTriggerCode, number>(
-    TRIGGER_ORDER.map((code) => [code, 0]),
-  );
-
-  for (const record of records) {
-    for (const code of getTriggeredCodes(record)) {
-      counts.set(code, (counts.get(code) ?? 0) + 1);
-    }
-  }
-
-  return TRIGGER_ORDER.map((code, order) => ({
-    code,
-    order,
-    count: counts.get(code) ?? 0,
-  }))
-    .filter(({ count }) => count > 0)
-    .sort((a, b) => b.count - a.count || a.order - b.order)
-    .slice(0, 5)
-    .map(({ code, count }, index) => ({
-      rank: index + 1,
-      trigger: TRIGGER_LABELS[code],
-      count,
+  const { ranks } = calculateTopTrigger({
+    periodType: "WEEKLY",
+    conditions: records,
+    pauzeDates: new Set(),
+  });
+  return ranks
+    .filter(({ triggerCount }) => triggerCount > 0)
+    .map(({ rankOrder, triggerName, triggerCount }) => ({
+      rank: rankOrder,
+      trigger: triggerName,
+      count: triggerCount,
     }));
-};
-
-const buildWeeklyInsights = (
-  hardestDay: string,
-  topTriggers: TopTriggerDto[],
-  records: ReportConditionRecord[],
-): string[] => {
-  const insights = [`${hardestDay}에 예민함이 가장 높게 나타났어요.`];
-  const topTrigger = topTriggers[0];
-  if (topTrigger) {
-    insights.push(
-      `이번 주에는 ${topTrigger.trigger} 트리거가 가장 자주 나타났어요.`,
-    );
-  }
-
-  const weekdays = records.filter((record) => {
-    const day = record.conditionDate.getUTCDay();
-    return day >= 1 && day <= 5;
-  });
-  const weekends = records.filter((record) => {
-    const day = record.conditionDate.getUTCDay();
-    return day === 0 || day === 6;
-  });
-  if (weekdays.length > 0 && weekends.length > 0 && average(weekends) < average(weekdays)) {
-    insights.push("주말에는 평일보다 예민함 점수가 낮게 나타났어요.");
-  }
-  return insights;
 };
 
 const getMonthWeekIndex = (date: Date, monthStart: Date): number => {
@@ -159,59 +142,46 @@ export const aggregateMonthlyWeeks = (
   const groups = new Map<number, ReportConditionRecord[]>();
   for (const record of records) {
     const index = getMonthWeekIndex(record.conditionDate, monthStart);
-    const group = groups.get(index) ?? [];
-    group.push(record);
-    groups.set(index, group);
+    groups.set(index, [...(groups.get(index) ?? []), record]);
   }
   return [...groups.entries()]
     .sort(([a], [b]) => a - b)
     .map(([index, group]) => ({
       week: `${index + 1}주차`,
-      averageScore: average(group),
+      averageScore: reportAverage(group),
     }));
-};
-
-const buildMonthlyInsights = (
-  hardestWeek: string,
-  topTriggers: TopTriggerDto[],
-): string[] => {
-  const insights = [`${hardestWeek}에 예민함이 가장 높게 나타났어요.`];
-  const topTrigger = topTriggers[0];
-  if (topTrigger) {
-    insights.unshift(
-      `이번 달에는 ${topTrigger.trigger} 트리거가 가장 자주 나타났어요.`,
-    );
-  }
-  return insights;
 };
 
 export const buildWeeklyReport = (
   current: ReportConditionRecord[],
   previous: ReportConditionRecord[],
   pauzeCount = 0,
+  topTriggers = aggregateTopTriggers(current),
+  insights: string[] = [],
 ): WeeklyReportDto => {
-  if (current.length === 0) throw new WeeklyReportNotFoundError();
-
-  const hardest = current.reduce((max, record) =>
-    record.sensitivityScore > max.sensitivityScore ? record : max,
+  const hardest = current.reduce<ReportConditionRecord | null>(
+    (max, record) =>
+      !max || record.sensitivityScore > max.sensitivityScore ? record : max,
+    null,
   );
-  const currentAverage = average(current);
-  const topTriggers = aggregateTopTriggers(current);
-  const hardestDay = DAY_LONG_NAMES[hardest.conditionDate.getUTCDay()]!;
-
+  const currentAverage = reportAverage(current);
   return {
     averageScore: currentAverage,
-    hardestDay,
-    hardestScore: hardest.sensitivityScore,
+    hardestDay: hardest
+      ? DAY_LONG_NAMES[hardest.conditionDate.getUTCDay()]!
+      : "",
+    hardestScore: hardest?.sensitivityScore ?? 0,
     pauzeCount,
     scoreChange:
-      previous.length > 0 ? currentAverage - average(previous) : null,
+      previous.length > 0
+        ? roundOne(currentAverage - reportAverage(previous))
+        : null,
     dailyScores: current.map((record) => ({
       day: DAY_SHORT_NAMES[record.conditionDate.getUTCDay()]!,
       score: record.sensitivityScore,
     })),
     topTriggers,
-    insights: buildWeeklyInsights(hardestDay, topTriggers, current),
+    insights,
   };
 };
 
@@ -220,26 +190,188 @@ export const buildMonthlyReport = (
   previous: ReportConditionRecord[],
   monthStart: Date,
   pauzeCount = 0,
+  topTriggers = aggregateTopTriggers(current),
+  insights: string[] = [],
 ): MonthlyReportDto => {
-  if (current.length === 0) throw new MonthlyReportNotFoundError();
-
   const weeklyScores = aggregateMonthlyWeeks(current, monthStart);
-  const hardest = weeklyScores.reduce((max, week) =>
-    week.averageScore > max.averageScore ? week : max,
+  const hardest = weeklyScores.reduce<WeeklyScoreDto | null>(
+    (max, week) =>
+      !max || week.averageScore > max.averageScore ? week : max,
+    null,
   );
-  const currentAverage = average(current);
-  const topTriggers = aggregateTopTriggers(current);
-
+  const currentAverage = reportAverage(current);
   return {
     averageScore: currentAverage,
-    hardestWeek: hardest.week,
-    hardestScore: hardest.averageScore,
+    hardestWeek: hardest?.week ?? "",
+    hardestScore: hardest?.averageScore ?? 0,
     pauzeCount,
     scoreChange:
-      previous.length > 0 ? currentAverage - average(previous) : null,
+      previous.length > 0
+        ? roundOne(currentAverage - reportAverage(previous))
+        : null,
     weeklyScores,
     topTriggers,
-    insights: buildMonthlyInsights(hardest.week, topTriggers),
+    insights,
+  };
+};
+
+const createCandidates = (
+  context: InsightCalculationContext,
+): {
+  candidates: ReturnType<typeof selectInsights>;
+  ranks: TriggerRankMetric[];
+} => {
+  const topTrigger = calculateTopTrigger(context);
+  const possible = [
+    calculateAccumulatedFatigue(context),
+    topTrigger.candidate,
+    calculateSleepCorrelation(context),
+    calculatePauzeEffect(context),
+    calculateRecoverySpeed(context),
+    calculateHardestDay(context),
+    calculateTriggerCombination(context),
+  ].filter((candidate) => candidate !== null);
+  return {
+    candidates: selectInsights(possible, context.periodType),
+    ranks: topTrigger.ranks,
+  };
+};
+
+const getPreviousStart = (
+  periodType: ReportPeriodType,
+  range: DateRange,
+): Date =>
+  periodType === "WEEKLY"
+    ? addDays(range.start, -7)
+    : new Date(
+        Date.UTC(
+          range.start.getUTCFullYear(),
+          range.start.getUTCMonth() - 1,
+          1,
+        ),
+      );
+
+const generateCurrentReport = async (
+  uid: string,
+  periodType: ReportPeriodType,
+  range: DateRange,
+) => {
+  const previousStart = getPreviousStart(periodType, range);
+  const [records, usages] = await Promise.all([
+    findConditionsByUserAndDateRange(
+      uid,
+      previousStart,
+      range.calculationEndExclusive,
+    ),
+    findPauzeUsagesByUserAndDateRange(
+      uid,
+      toUtcInstantFromKstDate(range.start),
+      toUtcInstantFromKstDate(range.calculationEndExclusive),
+    ),
+  ]);
+  const current = records.filter(
+    ({ conditionDate }) => conditionDate >= range.start,
+  );
+  const previous = records.filter(
+    ({ conditionDate }) => conditionDate < range.start,
+  );
+  const context: InsightCalculationContext = {
+    periodType,
+    conditions: current,
+    pauzeDates: new Set(usages.map(toKstDateKey)),
+  };
+  const { candidates, ranks } = createCandidates(context);
+  const contents = candidates.map((candidate) => {
+    const content = createInsightContent(candidate, periodType);
+    return validateInsightContent(content, candidate)
+      ? content
+      : "현재 데이터에서 확인할 수 있는 패턴을 정리했어요.";
+  });
+  const currentAverage = reportAverage(current);
+  const previousAverage =
+    previous.length > 0 ? reportAverage(previous) : null;
+
+  const stored = await replaceStoredReport({
+    uid,
+    reportType: periodType,
+    periodStart: range.start,
+    periodEnd: range.periodEnd,
+    validConditionDays: current.length,
+    averageScore: currentAverage,
+    previousAverageScore: previousAverage,
+    scoreChange:
+      previousAverage === null
+        ? null
+        : roundOne(currentAverage - previousAverage),
+    pauzeCount: usages.length,
+    triggerRanks: ranks,
+    insights: candidates,
+    insightContents: contents,
+  });
+  return { stored, current, previous };
+};
+
+const storedInsights = (
+  report: NonNullable<Awaited<ReturnType<typeof findStoredReport>>>,
+): string[] => report.insights.map(({ content }) => content);
+
+const storedTopTriggers = (
+  report: NonNullable<Awaited<ReturnType<typeof findStoredReport>>>,
+): TopTriggerDto[] =>
+  report.triggerRanks
+    .filter(({ triggerCount }) => triggerCount > 0)
+    .map(({ rankOrder, triggerCount, trigger }) => ({
+      rank: rankOrder,
+      trigger: trigger.name,
+      count: triggerCount,
+    }));
+
+const getWeeklyReportInternal = async (
+  uid: string,
+  now: Date,
+): Promise<WeeklyReportDto> => {
+  const range = getWeeklyRange(now);
+  const generated = await generateCurrentReport(uid, "WEEKLY", range);
+  if (!generated.stored) throw new WeeklyReportFetchFailedError();
+  const response = buildWeeklyReport(
+    generated.current,
+    generated.previous,
+    generated.stored.pauzeCount,
+    storedTopTriggers(generated.stored),
+    storedInsights(generated.stored),
+  );
+  return {
+    ...response,
+    averageScore: Number(generated.stored.averageScore),
+    scoreChange:
+      generated.stored.scoreChange === null
+        ? null
+        : Number(generated.stored.scoreChange),
+  };
+};
+
+const getMonthlyReportInternal = async (
+  uid: string,
+  now: Date,
+): Promise<MonthlyReportDto> => {
+  const range = getMonthlyRange(now);
+  const generated = await generateCurrentReport(uid, "MONTHLY", range);
+  if (!generated.stored) throw new MonthlyReportFetchFailedError();
+  const response = buildMonthlyReport(
+    generated.current,
+    generated.previous,
+    range.start,
+    generated.stored.pauzeCount,
+    storedTopTriggers(generated.stored),
+    storedInsights(generated.stored),
+  );
+  return {
+    ...response,
+    averageScore: Number(generated.stored.averageScore),
+    scoreChange:
+      generated.stored.scoreChange === null
+        ? null
+        : Number(generated.stored.scoreChange),
   };
 };
 
@@ -247,26 +379,8 @@ export const getWeeklyReport = async (
   uid: string,
   now = new Date(),
 ): Promise<WeeklyReportDto> => {
-  const currentRange = getWeeklyRange(now);
-  const previousStart = addDays(currentRange.start, -7);
   try {
-    const [records, pauzeCount] = await Promise.all([
-      findConditionsByUserAndDateRange(
-        uid,
-        previousStart,
-        currentRange.endExclusive,
-      ),
-      countPauzeUsagesByUserAndDateRange(
-        uid,
-        currentRange.start,
-        currentRange.endExclusive,
-      ),
-    ]);
-    return buildWeeklyReport(
-      records.filter((record) => record.conditionDate >= currentRange.start),
-      records.filter((record) => record.conditionDate < currentRange.start),
-      pauzeCount,
-    );
+    return await getWeeklyReportInternal(uid, now);
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new WeeklyReportFetchFailedError();
@@ -277,33 +391,8 @@ export const getMonthlyReport = async (
   uid: string,
   now = new Date(),
 ): Promise<MonthlyReportDto> => {
-  const currentRange = getMonthlyRange(now);
-  const previousStart = new Date(
-    Date.UTC(
-      currentRange.start.getUTCFullYear(),
-      currentRange.start.getUTCMonth() - 1,
-      1,
-    ),
-  );
   try {
-    const [records, pauzeCount] = await Promise.all([
-      findConditionsByUserAndDateRange(
-        uid,
-        previousStart,
-        currentRange.endExclusive,
-      ),
-      countPauzeUsagesByUserAndDateRange(
-        uid,
-        currentRange.start,
-        currentRange.endExclusive,
-      ),
-    ]);
-    return buildMonthlyReport(
-      records.filter((record) => record.conditionDate >= currentRange.start),
-      records.filter((record) => record.conditionDate < currentRange.start),
-      currentRange.start,
-      pauzeCount,
-    );
+    return await getMonthlyReportInternal(uid, now);
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new MonthlyReportFetchFailedError();

@@ -31,11 +31,12 @@ export class ConditionController extends Controller {
     message: "오늘의 컨디션 입력이 완료되었습니다.",
     result: {
       conditionId: 1,
-      sensitivityScore: 53,
+      sensitivityScore: 59,
       sensitivityLevel: "NORMAL",
       triggerCodes: [
         "SLEEP_DEPRIVATION",
         "VISUAL_OVERLOAD",
+        "SOCIAL_FATIGUE",
         "ENERGY_DEPLETION",
       ],
     },

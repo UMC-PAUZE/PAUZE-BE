@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MonthlyReportNotFoundError, WeeklyReportNotFoundError } from "../errors/report.errors.js";
 import type { ReportConditionRecord } from "../dto/report.dto.js";
 import {
   aggregateMonthlyWeeks,
@@ -23,7 +22,7 @@ const record = (
   sleepLevel: "OVER_8",
   noiseLevel: "QUIET",
   visualLevel: "LOW",
-  socialLevel: "MANY",
+  socialLevel: "ALONE",
   energyLevel: "ENOUGH",
   ...levels,
 });
@@ -61,23 +60,33 @@ test("uses the actual PAUZE completion count supplied for the report period", ()
   );
 });
 
-test("throws the report-specific not-found errors for empty periods", () => {
-  assert.throws(() => buildWeeklyReport([], []), WeeklyReportNotFoundError);
-  assert.throws(
-    () => buildMonthlyReport([], [], new Date("2026-07-01T00:00:00.000Z")),
-    MonthlyReportNotFoundError,
+test("builds an empty report so the insufficient-data insight can be stored", () => {
+  assert.equal(buildWeeklyReport([], []).averageScore, 0);
+  assert.equal(
+    buildMonthlyReport([], [], new Date("2026-07-01T00:00:00.000Z"))
+      .averageScore,
+    0,
   );
 });
 
 test("aggregates trigger codes by frequency with stable tie ordering", () => {
   const triggers = aggregateTopTriggers([
-    record("2026-07-13", 50, { triggerCodes: ["SLEEP_DEPRIVATION", "NOISE_EXPOSURE"] }),
-    record("2026-07-14", 50, { triggerCodes: ["NOISE_EXPOSURE", "ENERGY_DEPLETION"] }),
-    record("2026-07-15", 50, { triggerCodes: ["SLEEP_DEPRIVATION", "ENERGY_DEPLETION"] }),
+    record("2026-07-13", 50, {
+      sleepLevel: "FOUR_TO_SIX",
+      noiseLevel: "UNCOMFORTABLE",
+    }),
+    record("2026-07-14", 50, {
+      noiseLevel: "UNCOMFORTABLE",
+      energyLevel: "LOW",
+    }),
+    record("2026-07-15", 50, {
+      sleepLevel: "FOUR_TO_SIX",
+      energyLevel: "LOW",
+    }),
   ]);
 
   assert.deepEqual(triggers, [
-    { rank: 1, trigger: "수면시간", count: 2 },
+    { rank: 1, trigger: "수면 부족", count: 2 },
     { rank: 2, trigger: "소음 노출", count: 2 },
     { rank: 3, trigger: "에너지 소진", count: 2 },
   ]);
@@ -105,7 +114,7 @@ test("uses trigger relations stored for each condition", () => {
 
 test("counts a trigger at most once per condition date", () => {
   const triggers = aggregateTopTriggers([
-    record("2026-07-13", 20, { triggerCodes: ["NOISE_EXPOSURE"] }),
+    record("2026-07-13", 20, { noiseLevel: "UNCOMFORTABLE" }),
   ]);
   assert.deepEqual(triggers, [{ rank: 1, trigger: "소음 노출", count: 1 }]);
 });
@@ -113,7 +122,7 @@ test("counts a trigger at most once per condition date", () => {
 test("counts noise exposure across 18 distinct dates independently of total averages", () => {
   const records = Array.from({ length: 18 }, (_, index) =>
     record(`2026-07-${String(index + 1).padStart(2, "0")}`, index, {
-      triggerCodes: ["NOISE_EXPOSURE"],
+      noiseLevel: "UNCOMFORTABLE",
     }),
   );
   assert.deepEqual(aggregateTopTriggers(records)[0], {
@@ -121,7 +130,7 @@ test("counts noise exposure across 18 distinct dates independently of total aver
     trigger: "소음 노출",
     count: 18,
   });
-  assert.equal(buildMonthlyReport(records, [], new Date("2026-07-01T00:00:00.000Z")).averageScore, 9);
+  assert.equal(buildMonthlyReport(records, [], new Date("2026-07-01T00:00:00.000Z")).averageScore, 8.5);
 });
 
 test("groups a five-week month and finds its hardest week", () => {
@@ -146,10 +155,14 @@ test("calculates KST weekly and monthly boundaries", () => {
   const instant = new Date("2026-07-31T16:00:00.000Z"); // 2026-08-01 01:00 KST
   assert.deepEqual(getWeeklyRange(instant), {
     start: new Date("2026-07-27T00:00:00.000Z"),
+    periodEnd: new Date("2026-08-02T00:00:00.000Z"),
     endExclusive: new Date("2026-08-03T00:00:00.000Z"),
+    calculationEndExclusive: new Date("2026-08-02T00:00:00.000Z"),
   });
   assert.deepEqual(getMonthlyRange(instant), {
     start: new Date("2026-08-01T00:00:00.000Z"),
+    periodEnd: new Date("2026-08-31T00:00:00.000Z"),
     endExclusive: new Date("2026-09-01T00:00:00.000Z"),
+    calculationEndExclusive: new Date("2026-08-02T00:00:00.000Z"),
   });
 });

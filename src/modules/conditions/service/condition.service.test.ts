@@ -30,7 +30,7 @@ test("uses the Asia/Seoul date across the UTC midnight boundary", () => {
   );
 });
 
-test("calculates the documented 53-point example", () => {
+test("calculates the documented example with the social activity policy", () => {
   const result = calculateCondition({
     sleepLevel: "FOUR_TO_SIX",
     noiseLevel: "NORMAL",
@@ -40,11 +40,12 @@ test("calculates the documented 53-point example", () => {
   });
 
   assert.deepEqual(result, {
-    sensitivityScore: 53,
+    sensitivityScore: 59,
     sensitivityLevel: "NORMAL",
     triggerCodes: [
       "SLEEP_DEPRIVATION",
       "VISUAL_OVERLOAD",
+      "SOCIAL_FATIGUE",
       "ENERGY_DEPLETION",
     ],
   });
@@ -56,7 +57,7 @@ test("calculates minimum and maximum valid scores", () => {
       sleepLevel: "OVER_8",
       noiseLevel: "QUIET",
       visualLevel: "LOW",
-      socialLevel: "MANY",
+      socialLevel: "ALONE",
       energyLevel: "ENOUGH",
     }).sensitivityScore,
     0,
@@ -66,7 +67,7 @@ test("calculates minimum and maximum valid scores", () => {
       sleepLevel: "LESS_4",
       noiseLevel: "HARD",
       visualLevel: "VERY_HIGH",
-      socialLevel: "ALONE",
+      socialLevel: "MANY",
       energyLevel: "NONE",
     }).sensitivityScore,
     100,
@@ -150,7 +151,7 @@ test("counts 13 and 20 point answers as triggers but not 0 and 7", () => {
       sleepLevel: "OVER_8",
       noiseLevel: "NORMAL",
       visualLevel: "HIGH",
-      socialLevel: "ALONE",
+      socialLevel: "MANY",
       energyLevel: "ENOUGH",
     }).triggerCodes,
     ["VISUAL_OVERLOAD", "SOCIAL_FATIGUE"],
