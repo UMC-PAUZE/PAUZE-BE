@@ -17,7 +17,7 @@ export function isValidName(name: string): boolean {
 
 export function isValidNickname(nickname: string): boolean {
   const trimmed = nickname.trim();
-  return trimmed.length >= 1 && trimmed.length <= 10;
+  return trimmed.length >= 2 && trimmed.length <= 10;
 }
 
 export function isValidBirth(birth: string): boolean {

@@ -4,12 +4,14 @@ import type { Express, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import multer from "multer";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
 import fs from "fs";
 import { RegisterRoutes } from "./generated/routes.js";
 import { AppError } from "./common/errors/app.error.js";
 import { authenticate } from "./common/middlewares/auth.middleware.js";
+import { PROFILE_IMAGE_MAX_BYTES } from "./modules/users/constants/user.constants.js";
 
 dotenv.config();
 
@@ -50,7 +52,12 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 const router = express.Router();
 router.use(authenticate);
-RegisterRoutes(router);
+RegisterRoutes(router, {
+  multer: multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: PROFILE_IMAGE_MAX_BYTES },
+  }),
+});
 app.use("/api", router);
 
 app.use((err: AppError, req: Request, res: Response, next: NextFunction) => {
