@@ -36,3 +36,18 @@ export const findConditionsByUserAndDateRange = async (
     triggerCodes: conditionTriggers.map(({ trigger }) => trigger.code) as ReportConditionRecord["triggerCodes"],
   }));
 };
+
+export const countPauzeUsagesByUserAndDateRange = async (
+  uid: string,
+  start: Date,
+  endExclusive: Date,
+): Promise<number> =>
+  prisma.pauzeUsage.count({
+    where: {
+      uid,
+      completedAt: {
+        gte: start,
+        lt: endExclusive,
+      },
+    },
+  });

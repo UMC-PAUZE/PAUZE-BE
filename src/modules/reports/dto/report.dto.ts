@@ -9,9 +9,9 @@ import type {
 export type ReportTriggerCode =
   | "SLEEP_DEPRIVATION"
   | "NOISE_EXPOSURE"
-  | "VISUAL_STIMULATION"
-  | "SOCIAL_ISOLATION"
-  | "LOW_ENERGY";
+  | "VISUAL_OVERLOAD"
+  | "SOCIAL_FATIGUE"
+  | "ENERGY_DEPLETION";
 
 export interface ReportConditionRecord {
   conditionDate: Date;

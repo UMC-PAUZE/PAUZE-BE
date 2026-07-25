@@ -44,8 +44,8 @@ test("calculates the documented 53-point example", () => {
     sensitivityLevel: "NORMAL",
     triggerCodes: [
       "SLEEP_DEPRIVATION",
-      "VISUAL_STIMULATION",
-      "LOW_ENERGY",
+      "VISUAL_OVERLOAD",
+      "ENERGY_DEPLETION",
     ],
   });
 });
@@ -153,6 +153,6 @@ test("counts 13 and 20 point answers as triggers but not 0 and 7", () => {
       socialLevel: "ALONE",
       energyLevel: "ENOUGH",
     }).triggerCodes,
-    ["VISUAL_STIMULATION", "SOCIAL_ISOLATION"],
+    ["VISUAL_OVERLOAD", "SOCIAL_FATIGUE"],
   );
 });

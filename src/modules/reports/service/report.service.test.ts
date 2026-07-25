@@ -48,6 +48,19 @@ test("returns null score change when the previous week has no data", () => {
   assert.equal(buildWeeklyReport([record("2026-07-13", 40)], []).scoreChange, null);
 });
 
+test("uses the actual PAUZE completion count supplied for the report period", () => {
+  assert.equal(buildWeeklyReport([record("2026-07-13", 40)], [], 3).pauzeCount, 3);
+  assert.equal(
+    buildMonthlyReport(
+      [record("2026-07-13", 40)],
+      [],
+      new Date("2026-07-01T00:00:00.000Z"),
+      7,
+    ).pauzeCount,
+    7,
+  );
+});
+
 test("throws the report-specific not-found errors for empty periods", () => {
   assert.throws(() => buildWeeklyReport([], []), WeeklyReportNotFoundError);
   assert.throws(
@@ -59,14 +72,14 @@ test("throws the report-specific not-found errors for empty periods", () => {
 test("aggregates trigger codes by frequency with stable tie ordering", () => {
   const triggers = aggregateTopTriggers([
     record("2026-07-13", 50, { triggerCodes: ["SLEEP_DEPRIVATION", "NOISE_EXPOSURE"] }),
-    record("2026-07-14", 50, { triggerCodes: ["NOISE_EXPOSURE", "LOW_ENERGY"] }),
-    record("2026-07-15", 50, { triggerCodes: ["SLEEP_DEPRIVATION", "LOW_ENERGY"] }),
+    record("2026-07-14", 50, { triggerCodes: ["NOISE_EXPOSURE", "ENERGY_DEPLETION"] }),
+    record("2026-07-15", 50, { triggerCodes: ["SLEEP_DEPRIVATION", "ENERGY_DEPLETION"] }),
   ]);
 
   assert.deepEqual(triggers, [
     { rank: 1, trigger: "수면시간", count: 2 },
     { rank: 2, trigger: "소음 노출", count: 2 },
-    { rank: 3, trigger: "에너지 수준", count: 2 },
+    { rank: 3, trigger: "에너지 소진", count: 2 },
   ]);
   assert.ok(triggers.length <= 5);
 });

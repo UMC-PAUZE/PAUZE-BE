@@ -35,8 +35,8 @@ export class ConditionController extends Controller {
       sensitivityLevel: "NORMAL",
       triggerCodes: [
         "SLEEP_DEPRIVATION",
-        "VISUAL_STIMULATION",
-        "LOW_ENERGY",
+        "VISUAL_OVERLOAD",
+        "ENERGY_DEPLETION",
       ],
     },
   })

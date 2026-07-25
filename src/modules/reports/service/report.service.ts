@@ -13,7 +13,10 @@ import {
   WeeklyReportFetchFailedError,
   WeeklyReportNotFoundError,
 } from "../errors/report.errors.js";
-import { findConditionsByUserAndDateRange } from "../repository/report.repository.js";
+import {
+  countPauzeUsagesByUserAndDateRange,
+  findConditionsByUserAndDateRange,
+} from "../repository/report.repository.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -31,17 +34,17 @@ const DAY_LONG_NAMES = [
 const TRIGGER_ORDER: readonly ReportTriggerCode[] = [
   "SLEEP_DEPRIVATION",
   "NOISE_EXPOSURE",
-  "VISUAL_STIMULATION",
-  "SOCIAL_ISOLATION",
-  "LOW_ENERGY",
+  "VISUAL_OVERLOAD",
+  "SOCIAL_FATIGUE",
+  "ENERGY_DEPLETION",
 ];
 
 const TRIGGER_LABELS: Record<ReportTriggerCode, string> = {
   SLEEP_DEPRIVATION: "수면시간",
   NOISE_EXPOSURE: "소음 노출",
-  VISUAL_STIMULATION: "시각 자극 노출",
-  SOCIAL_ISOLATION: "사회적 활동량",
-  LOW_ENERGY: "에너지 수준",
+  VISUAL_OVERLOAD: "시각 과부하",
+  SOCIAL_FATIGUE: "사회 피로",
+  ENERGY_DEPLETION: "에너지 소진",
 };
 
 export interface DateRange {
@@ -185,6 +188,7 @@ const buildMonthlyInsights = (
 export const buildWeeklyReport = (
   current: ReportConditionRecord[],
   previous: ReportConditionRecord[],
+  pauzeCount = 0,
 ): WeeklyReportDto => {
   if (current.length === 0) throw new WeeklyReportNotFoundError();
 
@@ -199,7 +203,7 @@ export const buildWeeklyReport = (
     averageScore: currentAverage,
     hardestDay,
     hardestScore: hardest.sensitivityScore,
-    pauzeCount: 0,
+    pauzeCount,
     scoreChange:
       previous.length > 0 ? currentAverage - average(previous) : null,
     dailyScores: current.map((record) => ({
@@ -215,6 +219,7 @@ export const buildMonthlyReport = (
   current: ReportConditionRecord[],
   previous: ReportConditionRecord[],
   monthStart: Date,
+  pauzeCount = 0,
 ): MonthlyReportDto => {
   if (current.length === 0) throw new MonthlyReportNotFoundError();
 
@@ -229,7 +234,7 @@ export const buildMonthlyReport = (
     averageScore: currentAverage,
     hardestWeek: hardest.week,
     hardestScore: hardest.averageScore,
-    pauzeCount: 0,
+    pauzeCount,
     scoreChange:
       previous.length > 0 ? currentAverage - average(previous) : null,
     weeklyScores,
@@ -245,14 +250,22 @@ export const getWeeklyReport = async (
   const currentRange = getWeeklyRange(now);
   const previousStart = addDays(currentRange.start, -7);
   try {
-    const records = await findConditionsByUserAndDateRange(
-      uid,
-      previousStart,
-      currentRange.endExclusive,
-    );
+    const [records, pauzeCount] = await Promise.all([
+      findConditionsByUserAndDateRange(
+        uid,
+        previousStart,
+        currentRange.endExclusive,
+      ),
+      countPauzeUsagesByUserAndDateRange(
+        uid,
+        currentRange.start,
+        currentRange.endExclusive,
+      ),
+    ]);
     return buildWeeklyReport(
       records.filter((record) => record.conditionDate >= currentRange.start),
       records.filter((record) => record.conditionDate < currentRange.start),
+      pauzeCount,
     );
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -273,15 +286,23 @@ export const getMonthlyReport = async (
     ),
   );
   try {
-    const records = await findConditionsByUserAndDateRange(
-      uid,
-      previousStart,
-      currentRange.endExclusive,
-    );
+    const [records, pauzeCount] = await Promise.all([
+      findConditionsByUserAndDateRange(
+        uid,
+        previousStart,
+        currentRange.endExclusive,
+      ),
+      countPauzeUsagesByUserAndDateRange(
+        uid,
+        currentRange.start,
+        currentRange.endExclusive,
+      ),
+    ]);
     return buildMonthlyReport(
       records.filter((record) => record.conditionDate >= currentRange.start),
       records.filter((record) => record.conditionDate < currentRange.start),
       currentRange.start,
+      pauzeCount,
     );
   } catch (error) {
     if (error instanceof AppError) throw error;

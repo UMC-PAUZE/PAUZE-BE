@@ -407,7 +407,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "TriggerCode": {
         "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["SLEEP_DEPRIVATION"]},{"dataType":"enum","enums":["NOISE_EXPOSURE"]},{"dataType":"enum","enums":["VISUAL_STIMULATION"]},{"dataType":"enum","enums":["SOCIAL_ISOLATION"]},{"dataType":"enum","enums":["LOW_ENERGY"]}],"validators":{}},
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["SLEEP_DEPRIVATION"]},{"dataType":"enum","enums":["NOISE_EXPOSURE"]},{"dataType":"enum","enums":["VISUAL_OVERLOAD"]},{"dataType":"enum","enums":["SOCIAL_FATIGUE"]},{"dataType":"enum","enums":["ENERGY_DEPLETION"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "CreateTodayConditionResponseDto": {

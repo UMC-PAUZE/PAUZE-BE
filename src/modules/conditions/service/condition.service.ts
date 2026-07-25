@@ -78,9 +78,9 @@ export const calculateCondition = (body: CreateTodayConditionRequestDto) => {
   const triggerCodes: TriggerCode[] = [];
   if (scores.sleep >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("SLEEP_DEPRIVATION");
   if (scores.noise >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("NOISE_EXPOSURE");
-  if (scores.visual >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("VISUAL_STIMULATION");
-  if (scores.social >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("SOCIAL_ISOLATION");
-  if (scores.energy >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("LOW_ENERGY");
+  if (scores.visual >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("VISUAL_OVERLOAD");
+  if (scores.social >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("SOCIAL_FATIGUE");
+  if (scores.energy >= CONDITION_TRIGGER_THRESHOLD) triggerCodes.push("ENERGY_DEPLETION");
 
   return {
     sensitivityScore,
