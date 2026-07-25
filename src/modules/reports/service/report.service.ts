@@ -1,4 +1,4 @@
-import { AppError } from "../../common/errors/app.error.js";
+import { AppError } from "../../../common/errors/app.error.js";
 import type {
   MonthlyReportDto,
   ReportConditionRecord,
@@ -6,14 +6,14 @@ import type {
   TopTriggerDto,
   WeeklyReportDto,
   WeeklyScoreDto,
-} from "./report.dto.js";
+} from "../dto/report.dto.js";
 import {
   MonthlyReportFetchFailedError,
   MonthlyReportNotFoundError,
   WeeklyReportFetchFailedError,
   WeeklyReportNotFoundError,
-} from "./report.errors.js";
-import { findConditionsByUserAndDateRange } from "./report.repository.js";
+} from "../errors/report.errors.js";
+import { findConditionsByUserAndDateRange } from "../repository/report.repository.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;

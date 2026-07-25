@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AppError } from "../../common/errors/app.error.js";
+import { AppError } from "../../../common/errors/app.error.js";
+import { ConditionAlreadyExistsError } from "../errors/condition.errors.js";
 import {
-  ConditionAlreadyExistsError,
   calculateCondition,
   calculateSensitivityLevel,
   createTodayCondition,
@@ -117,7 +117,7 @@ test("createTodayCondition returns 409 when today's condition exists", async () 
     (error: unknown) =>
       error instanceof AppError &&
       error.statusCode === 409 &&
-      error.code === "CONDITION_ALREADY_EXISTS",
+      error.code === "CONDITION_ALREADY_EXISTS_409",
   );
 });
 
@@ -138,7 +138,7 @@ test("createTodayCondition returns 500 and logs an unexpected storage error", as
     (error: unknown) =>
       error instanceof AppError &&
       error.statusCode === 500 &&
-      error.code === "CONDITION_CREATE_FAILED",
+      error.code === "CONDITION_CREATE_FAILED_500",
   );
   assert.equal(loggedErrors.length, 1);
   assert.equal(loggedErrors[0]?.[1], storageError);

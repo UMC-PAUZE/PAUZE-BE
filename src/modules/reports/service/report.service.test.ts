@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MonthlyReportNotFoundError, WeeklyReportNotFoundError } from "./report.errors.js";
-import type { ReportConditionRecord } from "./report.dto.js";
+import { MonthlyReportNotFoundError, WeeklyReportNotFoundError } from "../errors/report.errors.js";
+import type { ReportConditionRecord } from "../dto/report.dto.js";
 import {
   aggregateMonthlyWeeks,
   aggregateTopTriggers,

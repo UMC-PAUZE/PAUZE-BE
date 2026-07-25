@@ -11,15 +11,14 @@ import {
   SuccessResponse,
   Tags,
 } from "tsoa";
-import { AppError } from "../../common/errors/app.error.js";
-import { success } from "../../common/responses/response.js";
-import type { ApiSuccessResponse } from "../../common/responses/response.js";
+import { success } from "../../../common/responses/response.js";
+import type { ApiSuccessResponse } from "../../../common/responses/response.js";
 import type {
   ConditionErrorResponseDto,
   CreateTodayConditionRequestDto,
   CreateTodayConditionResponseDto,
-} from "./condition.dto.js";
-import { createTodayCondition } from "./condition.service.js";
+} from "../dto/condition.dto.js";
+import { createTodayCondition } from "../service/condition.service.js";
 
 @Route("conditions")
 @Tags("Conditions")
@@ -46,21 +45,13 @@ export class ConditionController extends Controller {
   @Response<ConditionErrorResponseDto>(401, "Unauthorized")
   @Response<ConditionErrorResponseDto>(409, "Condition already exists")
   @Response<ConditionErrorResponseDto>(500, "Condition creation failed")
+  @Response<ConditionErrorResponseDto>(503, "Condition database unavailable")
+  @Response<ConditionErrorResponseDto>(504, "Condition database timeout")
   public async createToday(
     @Request() request: ExpressRequest,
     @Body() body: CreateTodayConditionRequestDto,
   ): Promise<ApiSuccessResponse<CreateTodayConditionResponseDto>> {
-    const uid = request.user?.uid;
-    if (!uid) {
-      throw new AppError({
-        code: "UNAUTHORIZED",
-        message: "인증이 필요합니다.",
-        statusCode: 401,
-        result: [],
-      });
-    }
-
-    const result = await createTodayCondition(uid, body);
+    const result = await createTodayCondition(request.user!.uid, body);
     this.setStatus(201);
     return success(
       "CONDITION_CREATE_SUCCESS",

@@ -1,19 +1,25 @@
-import { AppError } from "../../common/errors/app.error.js";
+import { AppError } from "../../../common/errors/app.error.js";
 import type {
   CreateTodayConditionRequestDto,
   CreateTodayConditionResponseDto,
   SensitivityLevel,
   TriggerCode,
-} from "./condition.dto.js";
+} from "../dto/condition.dto.js";
+import {
+  ConditionAlreadyExistsError,
+  ConditionCreateFailedError,
+  ConditionDatabaseTimeoutError,
+  ConditionDatabaseUnavailableError,
+} from "../errors/condition.errors.js";
 import {
   CONDITION_SCORE_POLICY,
   CONDITION_TRIGGER_THRESHOLD,
   getSensitivityLevel,
-} from "./condition.policy.js";
+} from "../policy/condition.policy.js";
 import {
   findTodayConditionByUserId,
   insertTodayCondition,
-} from "./condition.repository.js";
+} from "../repository/condition.repository.js";
 
 interface ConditionRepository {
   findTodayConditionByUserId: (
@@ -33,50 +39,6 @@ const conditionRepository: ConditionRepository = {
   findTodayConditionByUserId,
   insertTodayCondition,
 };
-
-export class ConditionAlreadyExistsError extends AppError {
-  constructor() {
-    super({
-      code: "CONDITION_ALREADY_EXISTS",
-      message: "오늘의 컨디션은 이미 입력되었습니다.",
-      statusCode: 409,
-      result: [],
-    });
-  }
-}
-
-class ConditionCreateFailedError extends AppError {
-  constructor() {
-    super({
-      code: "CONDITION_CREATE_FAILED",
-      message: "오늘의 컨디션 입력에 실패했습니다.",
-      statusCode: 500,
-      result: [],
-    });
-  }
-}
-
-class ConditionDatabaseUnavailableError extends AppError {
-  constructor() {
-    super({
-      code: "CONDITION_DATABASE_UNAVAILABLE",
-      message: "컨디션 저장소에 연결할 수 없습니다.",
-      statusCode: 503,
-      result: [],
-    });
-  }
-}
-
-class ConditionDatabaseTimeoutError extends AppError {
-  constructor() {
-    super({
-      code: "CONDITION_DATABASE_TIMEOUT",
-      message: "컨디션 저장 요청 시간이 초과되었습니다.",
-      statusCode: 504,
-      result: [],
-    });
-  }
-}
 
 const KST_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Seoul",

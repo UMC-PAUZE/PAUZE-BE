@@ -13,9 +13,8 @@ export function parseDurationToSeconds(duration: string): number {
 
   const value = Number(match[1]);
   const unit = match[2];
-  const secondsPerUnit = unit ? UNIT_TO_SECONDS[unit] : undefined;
-  if (secondsPerUnit === undefined) {
+  if (!unit || !(unit in UNIT_TO_SECONDS)) {
     throw new Error(`Invalid duration format: ${duration}`);
   }
-  return value * secondsPerUnit;
+  return value * UNIT_TO_SECONDS[unit as keyof typeof UNIT_TO_SECONDS];
 }

@@ -5,7 +5,7 @@ import type {
   SleepLevel,
   SocialLevel,
   VisualLevel,
-} from "./condition.dto.js";
+} from "../dto/condition.dto.js";
 
 export const CONDITION_TRIGGER_THRESHOLD = 13;
 

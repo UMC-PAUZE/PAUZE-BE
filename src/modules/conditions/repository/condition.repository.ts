@@ -1,9 +1,9 @@
-import { prisma } from "../../db.config.js";
+import { prisma } from "../../../db.config.js";
 import type {
   CreateTodayConditionRequestDto,
   SensitivityLevel,
   TriggerCode,
-} from "./condition.dto.js";
+} from "../dto/condition.dto.js";
 
 interface InsertTodayConditionParams extends CreateTodayConditionRequestDto {
   uid: string;

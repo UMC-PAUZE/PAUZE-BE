@@ -1,5 +1,5 @@
-import { prisma } from "../../db.config.js";
-import type { ReportConditionRecord } from "./report.dto.js";
+import { prisma } from "../../../db.config.js";
+import type { ReportConditionRecord } from "../dto/report.dto.js";
 
 export const findConditionsByUserAndDateRange = async (
   uid: string,

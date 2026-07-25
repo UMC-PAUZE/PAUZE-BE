@@ -4,7 +4,7 @@ import type {
   SleepLevel,
   SocialLevel,
   VisualLevel,
-} from "../conditions/condition.dto.js";
+} from "../../conditions/dto/condition.dto.js";
 
 export type ReportTriggerCode =
   | "SLEEP_DEPRIVATION"
