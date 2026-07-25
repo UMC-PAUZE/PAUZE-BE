@@ -4,7 +4,7 @@ import { AppError } from "../../../common/errors/app.error.js";
 import type { VisualGuideRepository } from "../repository/visual.repository.js";
 import { VisualGuideService } from "./visual.service.js";
 
-test("returns the mock URL without querying the database", async () => {
+test("DB에 데이터가 없으면 mockURL 반환", async () => {
   let findByKeyCalls = 0;
   const repository = {
     async findByKey() {
@@ -16,33 +16,33 @@ test("returns the mock URL without querying the database", async () => {
 
   const result = await service.getVisualGuideByKey("meditation");
 
-  assert.equal(findByKeyCalls, 0);
+  assert.equal(findByKeyCalls, 1);
   assert.deepEqual(result, {
     visualKey: "meditation",
     fileUrl: "https://example.com/mock/meditation.gif",
   });
 });
 
-test("returns the database URL when a mock URL does not exist", async () => {
+test("DB와 mockURL이 모두 있으면 DB URL을 우선 반환", async () => {
   const repository = {
     async findByKey(visualKey: string) {
       return {
         visualKey,
-        visualUrl: "https://cdn.example.com/visuals/breathing.gif",
+        visualUrl: "https://cdn.example.com/visuals/meditation.gif",
       };
     },
   } as unknown as VisualGuideRepository;
   const service = new VisualGuideService(repository);
 
-  const result = await service.getVisualGuideByKey("breathing");
+  const result = await service.getVisualGuideByKey("meditation");
 
   assert.deepEqual(result, {
-    visualKey: "breathing",
-    fileUrl: "https://cdn.example.com/visuals/breathing.gif",
+    visualKey: "meditation",
+    fileUrl: "https://cdn.example.com/visuals/meditation.gif",
   });
 });
 
-test("throws 404 when neither a mock URL nor a database row exists", async () => {
+test("DB와 mockURL이 모두 없으면 에러(404)", async () => {
   const repository = {
     async findByKey() {
       return null;

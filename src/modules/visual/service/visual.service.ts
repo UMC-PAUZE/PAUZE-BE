@@ -13,7 +13,16 @@ export class VisualGuideService {
   async getVisualGuideByKey(
     visualKey: string,
   ): Promise<VisualGuideFileResponse> {
+    const visual = await this.visualGuideRepository.findByKey(visualKey);
     const mockUrl = getMockVisualUrl(visualKey);
+
+    if (visual) {
+      return {
+        visualKey: visual.visualKey,
+        fileUrl: getSignedVisualUrl(visual.visualKey, visual.visualUrl),
+      };
+    }
+
     if (mockUrl) {
       return {
         visualKey,
@@ -21,20 +30,11 @@ export class VisualGuideService {
       };
     }
 
-    const visual = await this.visualGuideRepository.findByKey(visualKey);
-
-    if (!visual) {
-      throw new AppError({
-        code: VISUAL_CODES.VISUAL_GUIDE_NOT_FOUND,
-        message: VISUAL_MESSAGES.VISUAL_GUIDE_NOT_FOUND,
-        statusCode: 404,
-      });
-    }
-
-    return {
-      visualKey: visual.visualKey,
-      fileUrl: getSignedVisualUrl(visual.visualKey, visual.visualUrl),
-    };
+    throw new AppError({
+      code: VISUAL_CODES.VISUAL_GUIDE_NOT_FOUND,
+      message: VISUAL_MESSAGES.VISUAL_GUIDE_NOT_FOUND,
+      statusCode: 404,
+    });
   }
 }
 
