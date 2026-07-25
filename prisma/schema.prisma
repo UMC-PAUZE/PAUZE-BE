@@ -49,7 +49,6 @@ model User {
   searchHistories       SearchHistory[]
   audioLikes            AudioLiked[]
   audioSaves            AudioSave[]
-  pauzeUsages           PauzeUsage[]
 
   @@map("users")
 }
@@ -230,17 +229,4 @@ model VisualGuide {
   updatedAt     DateTime? @map("updated_at")
 
   @@map("visual_guide")
-}
-
-//사용 누적 횟수
-model PauzeUsage {
-  usageId      BigInt   @id @default(autoincrement()) @map("usage_id")
-  uid          String   @db.Char(36)
-  completionId String   @unique @map("completion_id") @db.Char(36)
-  completedAt  DateTime @default(now()) @map("completed_at")
-
-  user User @relation(fields: [uid], references: [uid], onDelete: Cascade)
-
-  @@index([uid, completedAt])
-  @@map("pauze_usage")
 }
