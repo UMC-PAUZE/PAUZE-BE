@@ -186,7 +186,7 @@ model AudioCode {
 }
 
 model AudioGuide {
-  audioId    BigInt    @id @map("audio_id")
+  audioId    BigInt    @id @default(autoincrement()) @map("audio_id")
   categoryId BigInt    @map("category_id")
   audioTitle String    @db.VarChar(50) @map("audio_title")
   audioUrl   String    @db.Text @map("audio_url")
@@ -225,4 +225,17 @@ model AudioSave {
 
   @@unique([audioId, uid])
   @@map("audio_save")
+}
+
+//즉각 진정하기 - 시각 안정
+model VisualGuide {
+  visualId      BigInt    @id @default(autoincrement()) @map("visual_id")
+  visualTitle   String    @map("visual_title")
+  visualContent String    @db.Text @map("visual_content")
+  visualUrl     String    @db.Text @map("visual_url")
+  visualKey     String    @unique @db.VarChar(255) @map("visual_key")
+  createdAt     DateTime  @map("created_at")
+  updatedAt     DateTime? @map("updated_at")
+
+  @@map("visual_guide")
 }
