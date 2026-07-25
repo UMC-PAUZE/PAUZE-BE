@@ -16,6 +16,7 @@
     },
     "routes": {
       "routesDir": "src/generated",
+      "esm": true,
       "authenticationModule": "./src/common/middlewares/tsoa.authentication.ts"
     }
 }

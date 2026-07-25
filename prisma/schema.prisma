@@ -158,6 +158,8 @@ model CurationPost {
   likes             PostLike[]
   bookmarks         PostBookmark[]
 
+  @@unique([categoryId, title])
+  @@index([categoryId], map: "curation_posts_category_id_fkey")
   @@map("curation_posts")
 }
 
@@ -169,6 +171,9 @@ model PostLike {
   post      CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
   user      User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
+  @@unique([postId, uid])
+  @@index([postId], map: "post_likes_post_id_fkey")
+  @@index([uid], map: "post_likes_uid_fkey")
   @@map("post_likes")
 }
 
@@ -180,6 +185,9 @@ model PostBookmark {
   post       CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
   user       User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
+  @@unique([postId, uid])
+  @@index([postId], map: "post_bookmarks_post_id_fkey")
+  @@index([uid], map: "post_bookmarks_uid_fkey")
   @@map("post_bookmarks")
 }
 
@@ -190,6 +198,7 @@ model SearchHistory {
   uid             String   @db.Char(36)
   user            User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
+  @@index([uid], map: "search_histories_uid_fkey")
   @@map("search_histories")
 }
 
@@ -219,7 +228,7 @@ model AudioCode {
 }
 
 model AudioGuide {
-  audioId    BigInt    @id @map("audio_id")
+  audioId    BigInt    @id @default(autoincrement()) @map("audio_id")
   categoryId BigInt    @map("category_id")
   audioTitle String    @db.VarChar(50) @map("audio_title")
   audioUrl   String    @db.Text @map("audio_url")
@@ -307,4 +316,17 @@ model ConditionTrigger {
   @@unique([conditionId, triggerId])
   @@index([triggerId])
   @@map("condition_trigger")
+}
+
+//즉각 진정하기 - 시각 안정
+model VisualGuide {
+  visualId      BigInt    @id @default(autoincrement()) @map("visual_id")
+  visualTitle   String    @map("visual_title")
+  visualContent String    @db.Text @map("visual_content")
+  visualUrl     String    @db.Text @map("visual_url")
+  visualKey     String    @unique @db.VarChar(255) @map("visual_key")
+  createdAt     DateTime  @map("created_at")
+  updatedAt     DateTime? @map("updated_at")
+
+  @@map("visual_guide")
 }
