@@ -4,7 +4,7 @@ node_modules/
 # dotenv 환경 변수 파일
 .env
 .env.*
-/src/generated/prisma
+/src/generated/*
 
 # 빌드 결과물
 dist/
