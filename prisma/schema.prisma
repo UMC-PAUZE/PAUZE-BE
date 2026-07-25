@@ -117,6 +117,8 @@ model CurationPost {
   likes             PostLike[]
   bookmarks         PostBookmark[]
 
+  @@unique([categoryId, title])
+  @@index([categoryId], map: "curation_posts_category_id_fkey")
   @@map("curation_posts")
 }
 
@@ -128,6 +130,9 @@ model PostLike {
   post      CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
   user      User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
+  @@unique([postId, uid])
+  @@index([postId], map: "post_likes_post_id_fkey")
+  @@index([uid], map: "post_likes_uid_fkey")
   @@map("post_likes")
 }
 
@@ -139,6 +144,9 @@ model PostBookmark {
   post       CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
   user       User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
+  @@unique([postId, uid])
+  @@index([postId], map: "post_bookmarks_post_id_fkey")
+  @@index([uid], map: "post_bookmarks_uid_fkey")
   @@map("post_bookmarks")
 }
 
@@ -149,6 +157,7 @@ model SearchHistory {
   uid             String   @db.Char(36)
   user            User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
+  @@index([uid], map: "search_histories_uid_fkey")
   @@map("search_histories")
 }
 
