@@ -1,11 +1,22 @@
+import { randomInt } from "node:crypto";
 import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
+
+const SMTP_CONNECTION_TIMEOUT_MS = 10_000;
+const SMTP_SOCKET_TIMEOUT_MS = 10_000;
+
+let transporter: Transporter | null = null;
 
 function getSmtpPass(): string {
   // App passwords may include regular or NBSP spaces — normalize to ASCII spaces then strip
   return (process.env.SMTP_PASS ?? "").replace(/\s+/g, "");
 }
 
-function createTransport() {
+function getTransporter(): Transporter {
+  if (transporter) {
+    return transporter;
+  }
+
   const host = process.env.SMTP_HOST ?? "smtp.gmail.com";
   const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
   const user = process.env.SMTP_USER;
@@ -15,22 +26,27 @@ function createTransport() {
     throw new Error("SMTP_USER and SMTP_PASS must be set");
   }
 
-  return nodemailer.createTransport({
+  transporter = nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
     auth: { user, pass },
+    connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
   });
+
+  return transporter;
 }
 
 export async function sendVerificationEmail(
   to: string,
   code: string
 ): Promise<void> {
-  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "noreply@pauze";
-  const transporter = createTransport();
+  const from =
+    process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "testpauze@gmail.com";
+  const mailTransporter = getTransporter();
 
-  await transporter.sendMail({
+  await mailTransporter.sendMail({
     from,
     to,
     subject: "[PAUZE] 이메일 인증코드",
@@ -40,5 +56,5 @@ export async function sendVerificationEmail(
 }
 
 export function generateVerificationCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(randomInt(100000, 1000000));
 }

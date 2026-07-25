@@ -93,6 +93,7 @@ export class AuthController extends Controller {
 
   @Post("signup/kakao-confirm")
   @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(409, "Conflict")
   public async kakaoConfirm(
@@ -110,6 +111,8 @@ export class AuthController extends Controller {
   @SuccessResponse(200, "OK")
   @Response(400, "Bad Request")
   @Response(401, "Unauthorized")
+  @Response(409, "Conflict")
+  @Response(500, "Internal Server Error")
   public async linkAccount(
     @Body() body: LinkAccountRequestDto
   ): Promise<ApiSuccessResponse<AuthTokenResultDto>> {

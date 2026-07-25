@@ -13,14 +13,17 @@ import {
 } from "../../../common/utils/password.util.js";
 import {
   deleteEmailCode,
+  deleteEmailCodeAttempts,
   deleteEmailPending,
   deleteEmailVerified,
   deleteRefreshToken,
   deleteRefreshTokenByUid,
   EMAIL_CODE_EXPIRES_IN,
+  EMAIL_CODE_MAX_ATTEMPTS,
   getEmailCode,
   getEmailPending,
   getRefreshTokenData,
+  incrementEmailCodeAttempts,
   isEmailVerified,
   rotateRefreshToken,
   saveEmailCode,
@@ -127,7 +130,7 @@ export class AuthService {
       return { type: "KAKAO_EXISTS", email };
     }
 
-    return { type: "NEW" };
+    return { type: "DUPLICATE" };
   }
 
   private validateSignupRequest(body: LocalSignupRequestDto): void {
@@ -240,13 +243,53 @@ export class AuthService {
     const code = generateVerificationCode();
     await saveEmailCode(email, code);
     await saveEmailPending(email, pending);
-    await sendVerificationEmail(email, code);
+    try {
+      await sendVerificationEmail(email, code);
+    } catch (error) {
+      await deleteEmailCode(email);
+      await deleteEmailPending(email);
+      throw error;
+    }
 
     return {
       email,
       expiresIn: EMAIL_CODE_EXPIRES_IN,
       nextStep: "VERIFY_EMAIL",
     };
+  }
+
+  private maskEmail(email: string): string {
+    const [local, domain] = email.split("@");
+    if (!local || !domain) {
+      return "***";
+    }
+    return `${local.slice(0, 1)}***@${domain}`;
+  }
+
+  private isUniqueConstraintError(
+    error: unknown,
+    field?: string
+  ): boolean {
+    if (
+      typeof error !== "object" ||
+      error === null ||
+      !("code" in error) ||
+      error.code !== "P2002"
+    ) {
+      return false;
+    }
+    if (!field) {
+      return true;
+    }
+    const meta = (error as { meta?: { target?: string | string[] } }).meta;
+    const target = meta?.target;
+    if (Array.isArray(target)) {
+      return target.includes(field);
+    }
+    if (typeof target === "string") {
+      return target.includes(field);
+    }
+    return false;
   }
 
   async signup(body: LocalSignupRequestDto): Promise<EmailCodeSentResultDto> {
@@ -387,6 +430,14 @@ export class AuthService {
     const email = body.email.trim().toLowerCase();
     const storedCode = await getEmailCode(email);
     if (!storedCode || storedCode !== body.code.trim()) {
+      if (storedCode) {
+        const attempts = await incrementEmailCodeAttempts(email);
+        if (attempts >= EMAIL_CODE_MAX_ATTEMPTS) {
+          await deleteEmailCode(email);
+          await deleteEmailPending(email);
+          await deleteEmailCodeAttempts(email);
+        }
+      }
       throw new AppError({
         code: AUTH_CODES.EMAIL_CODE_INVALID,
         message: AUTH_MESSAGES.EMAIL_CODE_INVALID,
@@ -404,6 +455,7 @@ export class AuthService {
     }
 
     await deleteEmailCode(email);
+    await deleteEmailCodeAttempts(email);
 
     if (pending.purpose === "LINK") {
       await saveEmailVerified(email);
@@ -419,36 +471,55 @@ export class AuthService {
     const salt = generateSalt();
     const hashedPassword = hashPassword(salt, pending.password);
 
-    const user = await prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email: pending.email,
-          name: pending.name,
-          nickname: pending.nickname,
-          birth: parseBirthDate(pending.birth),
-        },
-      });
+    let user;
+    try {
+      user = await prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email: pending.email,
+            name: pending.name,
+            nickname: pending.nickname,
+            birth: parseBirthDate(pending.birth),
+          },
+        });
 
-      await tx.oauth.create({
-        data: {
-          uid: createdUser.uid,
-          socialType: SocialType.LOCAL,
-          providerId: salt,
-          password: hashedPassword,
-          loginEmail: pending.email,
-        },
-      });
+        await tx.oauth.create({
+          data: {
+            uid: createdUser.uid,
+            socialType: SocialType.LOCAL,
+            providerId: salt,
+            password: hashedPassword,
+            loginEmail: pending.email,
+          },
+        });
 
-      await tx.userTerm.createMany({
-        data: pending.termAgreements.map((agreement) => ({
-          uid: createdUser.uid,
-          termId: BigInt(agreement.termId),
-          termActive: agreement.agreed,
-        })),
-      });
+        await tx.userTerm.createMany({
+          data: pending.termAgreements.map((agreement) => ({
+            uid: createdUser.uid,
+            termId: BigInt(agreement.termId),
+            termActive: agreement.agreed,
+          })),
+        });
 
-      return createdUser;
-    });
+        return createdUser;
+      });
+    } catch (error) {
+      if (this.isUniqueConstraintError(error, "nickname")) {
+        throw new AppError({
+          code: AUTH_CODES.NICKNAME_DUPLICATE,
+          message: AUTH_MESSAGES.NICKNAME_DUPLICATE,
+          statusCode: 409,
+        });
+      }
+      if (this.isUniqueConstraintError(error, "email")) {
+        throw new AppError({
+          code: AUTH_CODES.EMAIL_DUPLICATE,
+          message: AUTH_MESSAGES.EMAIL_DUPLICATE,
+          statusCode: 409,
+        });
+      }
+      throw error;
+    }
 
     await deleteEmailPending(email);
     const tokens = await this.issueTokens(user, salt);
@@ -632,6 +703,30 @@ export class AuthService {
       });
     }
 
+    const emailVerified = await isEmailVerified(kakaoEmail);
+    if (emailVerified) {
+      await deleteEmailVerified(kakaoEmail);
+    } else {
+      const localOauth = user.oauths.find(
+        (oauth) => oauth.socialType === SocialType.LOCAL
+      );
+      if (
+        !body.password ||
+        !localOauth?.password ||
+        !verifyPassword(
+          localOauth.providerId,
+          body.password,
+          localOauth.password
+        )
+      ) {
+        throw new AppError({
+          code: AUTH_CODES.LINK_INVALID_REQUEST,
+          message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+          statusCode: 400,
+        });
+      }
+    }
+
     await prisma.oauth.create({
       data: {
         uid: user.uid,
@@ -703,9 +798,7 @@ export class AuthService {
           statusCode: 409,
           result: {
             existingSocialType: "LOCAL",
-            name: emailUser.name,
-            nickname: emailUser.nickname,
-            email: emailUser.email,
+            email: this.maskEmail(emailUser.email),
             nextStep: "LINK_ACCOUNT",
           },
         });
@@ -758,7 +851,7 @@ export class AuthService {
 
     const emailUser = await prisma.user.findUnique({
       where: { email },
-      include: { oauths: true },
+      select: { uid: true },
     });
     if (emailUser) {
       throw new AppError({
@@ -768,28 +861,47 @@ export class AuthService {
       });
     }
 
-    const user = await prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email,
-          name,
-          nickname,
-          birth: parseBirthDate(body.birth),
-        },
-      });
+    let user;
+    try {
+      user = await prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email,
+            name,
+            nickname,
+            birth: parseBirthDate(body.birth),
+          },
+        });
 
-      await tx.oauth.create({
-        data: {
-          uid: createdUser.uid,
-          socialType: SocialType.KAKAO,
-          providerId: kakaoUser.providerId,
-          password: null,
-          loginEmail: email,
-        },
-      });
+        await tx.oauth.create({
+          data: {
+            uid: createdUser.uid,
+            socialType: SocialType.KAKAO,
+            providerId: kakaoUser.providerId,
+            password: null,
+            loginEmail: email,
+          },
+        });
 
-      return createdUser;
-    });
+        return createdUser;
+      });
+    } catch (error) {
+      if (this.isUniqueConstraintError(error, "email")) {
+        throw new AppError({
+          code: AUTH_CODES.EMAIL_DUPLICATE,
+          message: AUTH_MESSAGES.EMAIL_DUPLICATE,
+          statusCode: 409,
+        });
+      }
+      if (this.isUniqueConstraintError(error, "nickname")) {
+        throw new AppError({
+          code: AUTH_CODES.NICKNAME_DUPLICATE,
+          message: AUTH_MESSAGES.NICKNAME_DUPLICATE,
+          statusCode: 409,
+        });
+      }
+      throw error;
+    }
 
     const tokens = await this.issueTokens(user, kakaoUser.providerId);
 
@@ -801,7 +913,11 @@ export class AuthService {
 
   async logout(uid: string, body: LogoutRequestDto): Promise<void> {
     if (body.refreshToken) {
-      await deleteRefreshToken(body.refreshToken);
+      const stored = await getRefreshTokenData(body.refreshToken);
+      if (stored?.uid === uid) {
+        await deleteRefreshToken(body.refreshToken);
+        return;
+      }
     }
     await deleteRefreshTokenByUid(uid);
   }

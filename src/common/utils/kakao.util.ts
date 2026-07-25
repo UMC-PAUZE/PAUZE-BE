@@ -14,16 +14,27 @@ interface KakaoUserMeResponse {
   };
 }
 
+const KAKAO_FETCH_TIMEOUT_MS = 10_000;
+
 export async function fetchKakaoUser(
   kakaoAccessToken: string
 ): Promise<KakaoUserProfile | null> {
-  const response = await fetch("https://kapi.kakao.com/v2/user/me", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${kakaoAccessToken}`,
-      "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), KAKAO_FETCH_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch("https://kapi.kakao.com/v2/user/me", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${kakaoAccessToken}`,
+        "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (response.status === 401 || response.status === 403) {
     return null;

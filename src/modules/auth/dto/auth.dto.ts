@@ -87,8 +87,6 @@ export interface KakaoSignupRequiredResultDto {
 export interface LinkAccountRequiredResultDto {
   existingSocialType: "KAKAO" | "LOCAL";
   email: string;
-  name?: string;
-  nickname?: string;
   nextStep?: "KAKAO_CONFIRM" | "LINK_ACCOUNT";
 }
 

@@ -6,6 +6,7 @@ let redis: Redis | null = null;
 
 const EMAIL_CODE_TTL_SECONDS = 300;
 const EMAIL_VERIFIED_TTL_SECONDS = 600;
+export const EMAIL_CODE_MAX_ATTEMPTS = 5;
 
 function getRedisClient(): Redis {
   if (!redis) {
@@ -140,6 +141,23 @@ export async function getEmailCode(email: string): Promise<string | null> {
 export async function deleteEmailCode(email: string): Promise<void> {
   const client = getRedisClient();
   await client.del(`email:code:${email}`);
+}
+
+export async function incrementEmailCodeAttempts(
+  email: string
+): Promise<number> {
+  const client = getRedisClient();
+  const key = `email:code:attempts:${email}`;
+  const attempts = await client.incr(key);
+  if (attempts === 1) {
+    await client.expire(key, EMAIL_CODE_TTL_SECONDS);
+  }
+  return attempts;
+}
+
+export async function deleteEmailCodeAttempts(email: string): Promise<void> {
+  const client = getRedisClient();
+  await client.del(`email:code:attempts:${email}`);
 }
 
 export async function saveEmailPending(
