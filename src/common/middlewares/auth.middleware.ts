@@ -10,6 +10,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/kakao",
   "/auth/email/verify",
   "/auth/link",
+  "/visual-guides"
 ];
 
 const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts", "/audio-guides"];
