@@ -4,17 +4,12 @@ import type { Express, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
-import { MulterError } from "multer";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
 import fs from "fs";
 import { RegisterRoutes } from "./generated/routes.js";
 import { AppError } from "./common/errors/app.error.js";
 import { authenticate } from "./common/middlewares/auth.middleware.js";
-import {
-  USER_CODES,
-  USER_MESSAGES,
-} from "./modules/users/errors/user.errors.js";
 
 dotenv.config();
 
@@ -58,27 +53,15 @@ router.use(authenticate);
 RegisterRoutes(router);
 app.use("/api", router);
 
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: AppError, req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) {
     return next(err);
   }
 
-  const isMulterFileTooLarge =
-    (err instanceof MulterError || err.name === "MulterError") &&
-    (err as MulterError).code === "LIMIT_FILE_SIZE";
-
-  const appErr = isMulterFileTooLarge
-    ? new AppError({
-        code: USER_CODES.PROFILE_INVALID,
-        message: USER_MESSAGES.PROFILE_INVALID,
-        statusCode: 400,
-      })
-    : (err as AppError);
-
-  res.status(appErr.statusCode || 500).error({
-    code: appErr.code || "unknown",
-    message: appErr.message || null,
-    result: appErr.result ?? null,
+  res.status(err.statusCode || 500).error({
+    code: err.code || "unknown",
+    message: err.message || null,
+    result: err.result ?? null,
   });
 });
 
