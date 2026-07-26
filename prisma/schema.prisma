@@ -90,11 +90,14 @@ model User {
   email                 String     @unique @db.VarChar(255)
   name                  String     @db.VarChar(255)
   nickname              String     @unique @db.VarChar(255)
+  introduction          String?    @db.Text
   profileImageUrl       String?    @map("profile_image_url") @db.Text
   profileS3Key          String?    @map("profile_s3_key") @db.VarChar(255)
   reminderAlarmActive   Boolean    @default(true) @map("reminder_alarm_active")
   sensitiveAlarmActive  Boolean    @default(true) @map("sensitive_alarm_active")
-  curationAlarmActive   Boolean    @default(true) @map("curation_alarm_active")
+  breathGuideActive     Boolean    @default(true) @map("breath_guide_active")
+  stabilitySoundActive  Boolean    @default(true) @map("stability_sound_active")
+  offlineContentActive  Boolean    @default(false) @map("offline_content_active")
   birth                 DateTime   @map("birth") @db.Date
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime?  @updatedAt @map("updated_at")
@@ -126,6 +129,7 @@ model Oauth {
   user       User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
   @@unique([uid, socialType])
+  @@unique([socialType, providerId])
   @@index([loginEmail, socialType])
   @@map("oauth")
 }

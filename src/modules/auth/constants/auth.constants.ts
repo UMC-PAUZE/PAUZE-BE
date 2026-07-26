@@ -1,6 +1,6 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BIRTH_REGEX = /^\d{8}$/;
-const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
 
 export function isValidEmail(email: string): boolean {
   return EMAIL_REGEX.test(email);
@@ -17,7 +17,7 @@ export function isValidName(name: string): boolean {
 
 export function isValidNickname(nickname: string): boolean {
   const trimmed = nickname.trim();
-  return trimmed.length >= 1 && trimmed.length <= 10;
+  return trimmed.length >= 2 && trimmed.length <= 10;
 }
 
 export function isValidBirth(birth: string): boolean {
@@ -28,6 +28,12 @@ export function isValidBirth(birth: string): boolean {
   const year = Number(birth.slice(0, 4));
   const month = Number(birth.slice(4, 6));
   const day = Number(birth.slice(6, 8));
+  const currentYear = new Date().getUTCFullYear();
+
+  if (year < 1900 || year > currentYear) {
+    return false;
+  }
+
   const date = new Date(Date.UTC(year, month - 1, day));
 
   return (
