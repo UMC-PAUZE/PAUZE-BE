@@ -11,6 +11,7 @@ tone_instructions: >
 
 reviews:
   profile: "chill"
+  request_changes_workflow: true
   high_level_summary: true
   poem: false
   review_status: true
@@ -40,6 +41,12 @@ reviews:
     - path: "prisma/**"
       instructions: |
         스키마 변경의 마이그레이션 안전성, 인덱스/관계 설정, 데이터 무결성을 확인해주세요.
+
+ignore_patterns:
+  - "*.lock"
+  - "*.md"
+  - "*.json"
+  - "src/generated/**"
 
 chat:
   auto_reply: true
