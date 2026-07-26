@@ -1,15 +1,7 @@
 {
   "name": "pauze-be",
-  "type": "module",
   "version": "1.0.0",
   "description": "PAUZE-BE",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsoa spec-and-routes && tsx src/index.ts",
-    "dev": "tsoa spec-and-routes && nodemon --exec tsx src/index.ts",
-    "tsoa:gen": "tsoa spec && tsoa routes"
-  },
   "homepage": "https://github.com/UMC-PAUZE/PAUZE-BE#readme",
   "bugs": {
     "url": "https://github.com/UMC-PAUZE/PAUZE-BE/issues"
@@ -20,11 +12,21 @@
   },
   "license": "ISC",
   "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsoa spec-and-routes && tsx src/index.ts",
+    "dev": "tsoa spec-and-routes && nodemon --exec tsx src/index.ts",
+    "tsoa:gen": "tsoa spec && tsoa routes"
+  },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/morgan": "^1.9.10",
+    "aws-sdk": "^2.1693.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -33,6 +35,8 @@
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "multer-s3": "^3.0.1",
     "mysql2": "^3.22.5",
     "nodemailer": "^9.0.3",
     "swagger-ui-express": "^5.0.1",
@@ -49,7 +53,16 @@
     "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.14",
     "prisma": "^7.8.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.8.0": true,
+    "@scarf/scarf@1.4.0": true,
+    "aws-sdk@2.1693.0": true,
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true,
+    "prisma@7.8.0": true
   }
 }
