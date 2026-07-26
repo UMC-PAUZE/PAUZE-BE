@@ -4,10 +4,16 @@ node_modules/
 # dotenv 환경 변수 파일
 .env
 .env.*
-/src/generated/prisma
+/src/generated/*
 
 # 빌드 결과물
 dist/
 
 # 맥 파일
 .DS_Store
+
+# Cursor
+.cursor/
+
+# Local AWS CLI/SDK scratch
+.tmp-aws/

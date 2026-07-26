@@ -6,3 +6,414 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SocialType {
+  KAKAO
+  LOCAL
+}
+
+enum TermName {
+  NONE
+}
+
+enum CurationCategoryName {
+  HSP_TIP   @map("HSP팁")
+  RESEARCH  @map("연구")
+  BREATHING @map("호흡법")
+  SOUND     @map("사운드")
+}
+
+enum SleepLevel {
+  OVER_8
+  SIX_TO_EIGHT
+  FOUR_TO_SIX
+  LESS_4
+}
+
+enum NoiseLevel {
+  QUIET
+  NORMAL
+  UNCOMFORTABLE
+  HARD
+}
+
+enum VisualLevel {
+  LOW
+  NORMAL
+  HIGH
+  VERY_HIGH
+}
+
+enum SocialLevel {
+  MANY
+  SOME
+  LITTLE
+  ALONE
+}
+
+enum EnergyLevel {
+  ENOUGH
+  NORMAL
+  LOW
+  NONE
+}
+
+enum SensitivityLevel {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+}
+
+enum ReportInsightType {
+  HARDEST_DAY
+  SLEEP_CORRELATION
+  TOP_TRIGGER
+  PAUZE_EFFECT
+  RECOVERY_SPEED
+  ACCUMULATED_FATIGUE
+  TRIGGER_COMBINATION
+  INSUFFICIENT_DATA
+}
+
+model User {
+  uid                   String      @id @default(uuid()) @db.Char(36)
+  email                 String      @unique @db.VarChar(255)
+  nickname              String      @db.VarChar(255)
+  profileImageUrl       String?     @map("profile_image_url") @db.Text
+  profileS3Key          String?     @map("profile_s3_key") @db.VarChar(255)
+  reminderAlarmActive   Boolean     @default(true) @map("reminder_alarm_active")
+  sensitiveAlarmActive  Boolean     @default(true) @map("sensitive_alarm_active")
+  curationAlarmActive   Boolean     @default(true) @map("curation_alarm_active")
+  birth                 DateTime    @map("birth") @db.Date
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime?   @updatedAt @map("updated_at")
+  pushToken             String?     @map("push_token") @db.VarChar(255)
+  role                  Role        @default(USER)
+  oauths                Oauth[]
+  userTerms             UserTerm[]
+  postLikes             PostLike[]
+  postBookmarks         PostBookmark[]
+  searchHistories       SearchHistory[]
+  audioLikes            AudioLiked[]
+  audioSaves            AudioSave[]
+  conditions            Condition[]
+  pauzeUsages           PauzeUsage[]
+  sensitivityReports    SensitivityReport[]
+
+  @@map("users")
+}
+
+model Oauth {
+  oauthId    BigInt     @id @default(autoincrement()) @map("oauth_id")
+  uid        String     @db.Char(36)
+  socialType SocialType @map("social_type")
+  providerId String     @map("provider_id") @db.VarChar(255)
+  password   String?    @map("password") @db.Text
+  loginEmail String     @map("login_email") @db.VarChar(255)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime?  @updatedAt @map("updated_at")
+  user       User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@unique([uid, socialType])
+  @@index([loginEmail, socialType])
+  @@map("oauth")
+}
+
+model Term {
+  termId    BigInt     @id @default(autoincrement()) @map("term_id")
+  termName  TermName   @default(NONE) @map("term_name")
+  userTerms UserTerm[]
+
+  @@map("term")
+}
+
+model UserTerm {
+  userTermId BigInt    @id @default(autoincrement()) @map("user_term_id")
+  uid        String    @db.Char(36)
+  termId     BigInt    @map("term_id")
+  termActive Boolean   @default(false) @map("term_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime? @updatedAt @map("updated_at")
+  user       User      @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  term       Term      @relation(fields: [termId], references: [termId])
+
+  @@map("user_term")
+}
+
+model CurationCategory {
+  categoryId BigInt               @id @default(autoincrement()) @map("category_id")
+  name       CurationCategoryName
+  createdAt  DateTime             @default(now()) @map("created_at")
+  updatedAt  DateTime?            @updatedAt @map("updated_at")
+  posts      CurationPost[]
+
+  @@map("curation_categories")
+}
+
+model CurationPost {
+  postId            BigInt           @id @default(autoincrement()) @map("post_id")
+  title             String           @db.VarChar(255)
+  content           String           @db.Text
+  source            String?          @db.VarChar(255)
+  thumbnailUrl      String?          @map("thumbnail_url") @db.Text
+  viewCount         Int              @default(0) @map("view_count")
+  isPublished       Boolean          @default(true) @map("is_published")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime?        @updatedAt @map("updated_at")
+  categoryId        BigInt           @map("category_id")
+  estimatedReadTime Int              @map("estimated_read_time")
+  category          CurationCategory @relation(fields: [categoryId], references: [categoryId])
+  likes             PostLike[]
+  bookmarks         PostBookmark[]
+
+  @@unique([categoryId, title])
+  @@index([categoryId], map: "curation_posts_category_id_fkey")
+  @@map("curation_posts")
+}
+
+model PostLike {
+  likesId   BigInt       @id @default(autoincrement()) @map("likes_id")
+  createdAt DateTime     @default(now()) @map("created_at")
+  postId    BigInt       @map("post_id")
+  uid       String       @db.Char(36)
+  post      CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
+  user      User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@unique([postId, uid])
+  @@index([postId], map: "post_likes_post_id_fkey")
+  @@index([uid], map: "post_likes_uid_fkey")
+  @@map("post_likes")
+}
+
+model PostBookmark {
+  bookmarkId BigInt       @id @default(autoincrement()) @map("bookmark_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  postId     BigInt       @map("post_id")
+  uid        String       @db.Char(36)
+  post       CurationPost @relation(fields: [postId], references: [postId], onDelete: Cascade)
+  user       User         @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@unique([postId, uid])
+  @@index([postId], map: "post_bookmarks_post_id_fkey")
+  @@index([uid], map: "post_bookmarks_uid_fkey")
+  @@map("post_bookmarks")
+}
+
+model SearchHistory {
+  searchHistoryId BigInt   @id @default(autoincrement()) @map("search_history_id")
+  keyword         String   @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at")
+  uid             String   @db.Char(36)
+  user            User     @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@index([uid], map: "search_histories_uid_fkey")
+  @@map("search_histories")
+}
+
+// 즉각 진정하기 - 청각 안정
+
+model AudioCategory {
+  categoryId   BigInt    @id @map("category_id")
+  categoryName String    @db.VarChar(50) @map("category_name")
+  
+  // 외래키로 변경
+  codeId       Int       @map("code_id")
+  audioCode    AudioCode @relation(fields: [codeId], references: [id])
+  
+  createdAt    DateTime  @map("created_at")
+  updatedAt    DateTime? @map("updated_at")
+  audioGuides  AudioGuide[]
+
+  @@map("audio_category")
+}
+
+model AudioCode {
+  id        Int             @id @default(autoincrement())
+  codeName  String          @unique @db.VarChar(50) @map("code_name") // NATURE_SOUND 등 들어옴
+  categories AudioCategory[]
+
+  @@map("audio_code")
+}
+
+model AudioGuide {
+  audioId    BigInt    @id @default(autoincrement()) @map("audio_id")
+  categoryId BigInt    @map("category_id")
+  audioTitle String    @db.VarChar(50) @map("audio_title")
+  audioUrl   String    @db.Text @map("audio_url")
+  audioKey   String    @db.VarChar(255) @map("audio_key")
+  createdAt  DateTime  @map("created_at")
+  updatedAt  DateTime? @map("updated_at")
+
+  category   AudioCategory @relation(fields: [categoryId], references: [categoryId])
+  likedBy    AudioLiked[]
+  savedBy    AudioSave[]
+
+  @@map("audio_guide")
+}
+
+model AudioLiked {
+  likedId   BigInt     @id @default(autoincrement()) @map("liked_id")
+  audioId   BigInt     @map("audio_id")
+  uid       String     @db.Char(36)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
+
+  @@unique([audioId, uid])
+  @@map("audio_liked")
+}
+
+model AudioSave {
+  saveId    BigInt     @id @default(autoincrement()) @map("save_id")
+  audioId   BigInt     @map("audio_id")
+  uid       String     @db.Char(36)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
+  user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@unique([audioId, uid])
+  @@map("audio_save")
+}
+model Condition {
+  conditionId BigInt @id @default(autoincrement()) @map("condition_id")
+  uid         String @db.Char(36)
+
+  sleepLevel  SleepLevel  @map("sleep_level")
+  noiseLevel  NoiseLevel  @map("noise_level")
+  visualLevel VisualLevel @map("visual_level")
+  socialLevel SocialLevel @map("social_level")
+  energyLevel EnergyLevel @map("energy_level")
+
+  sensitivityScore Int              @map("sensitivity_score")
+  sensitivityLevel SensitivityLevel @map("sensitivity_level")
+  conditionDate    DateTime         @map("condition_date") @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user              User               @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  conditionTriggers ConditionTrigger[]
+
+  @@unique([uid, conditionDate])
+  @@map("daily_condition")
+}
+
+model Trigger {
+  triggerId          BigInt              @id @default(autoincrement()) @map("trigger_id")
+  name               String              @db.VarChar(50)
+  code               String              @unique @db.VarChar(50)
+  description        String?             @db.Text
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  conditionTriggers  ConditionTrigger[]
+  reportTriggerRanks ReportTriggerRank[]
+
+  @@map("trigger")
+}
+
+model ConditionTrigger {
+  conditionTriggerId BigInt    @id @default(autoincrement()) @map("condition_trigger_id")
+  conditionId        BigInt    @map("condition_id")
+  triggerId          BigInt    @map("trigger_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  condition          Condition @relation(fields: [conditionId], references: [conditionId], onDelete: Cascade)
+  trigger            Trigger   @relation(fields: [triggerId], references: [triggerId], onDelete: Cascade)
+
+  @@unique([conditionId, triggerId])
+  @@index([triggerId])
+  @@map("condition_trigger")
+}
+
+model PauzeUsage {
+  usageId      BigInt   @id @map("usage_id")
+  uid          String   @db.Char(36)
+  completedAt  DateTime
+  completionId String?  @db.Char(36)
+
+  user User @relation(fields: [uid], references: [uid], onDelete: Cascade)
+
+  @@index([uid, completedAt])
+  @@map("pauze_usage")
+}
+
+model SensitivityReport {
+  reportId             BigInt     @id @default(autoincrement()) @map("report_id")
+  uid                  String     @db.Char(36)
+  reportType           ReportType @map("report_type")
+  periodStart          DateTime   @map("period_start") @db.Date
+  periodEnd            DateTime   @map("period_end") @db.Date
+  validConditionDays   Int        @default(0) @map("valid_condition_days")
+  averageScore         Decimal    @map("average_score") @db.Decimal(5, 2)
+  previousAverageScore Decimal?   @map("previous_average_score") @db.Decimal(5, 2)
+  scoreChange          Decimal?   @map("score_change") @db.Decimal(5, 2)
+  pauzeCount           Int        @default(0) @map("pauze_count")
+  createdAt            DateTime   @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  user         User                @relation(fields: [uid], references: [uid], onDelete: Cascade)
+  triggerRanks ReportTriggerRank[]
+  insights     ReportInsight[]
+
+  @@unique([uid, reportType, periodStart, periodEnd])
+  @@map("sensitivity_report")
+}
+
+model ReportTriggerRank {
+  rankId            BigInt   @id @default(autoincrement()) @map("rank_id")
+  reportId          BigInt   @map("report_id")
+  triggerId         BigInt   @map("trigger_id")
+  rankOrder         Int      @map("rank_order")
+  averageScore      Decimal  @map("average_score") @db.Decimal(5, 2)
+  triggerCount      Int      @map("trigger_count")
+  highestScoreCount Int      @default(0) @map("highest_score_count")
+  createdAt         DateTime @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  report  SensitivityReport @relation(fields: [reportId], references: [reportId], onDelete: Cascade)
+  trigger Trigger           @relation(fields: [triggerId], references: [triggerId], onDelete: Cascade)
+
+  @@unique([reportId, triggerId])
+  @@index([triggerId])
+  @@map("report_trigger_rank")
+}
+
+model ReportInsight {
+  insightId    BigInt            @id @default(autoincrement()) @map("insight_id")
+  reportId     BigInt            @map("report_id")
+  insightType  ReportInsightType @map("insight_type")
+  content      String            @db.Text
+  displayOrder Int               @map("display_order")
+  createdAt    DateTime          @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  report SensitivityReport @relation(fields: [reportId], references: [reportId], onDelete: Cascade)
+
+  @@index([reportId, displayOrder])
+  @@map("report_insight")
+}
+
+//즉각 진정하기 - 시각 안정
+model VisualGuide {
+  visualId      BigInt    @id @default(autoincrement()) @map("visual_id")
+  visualTitle   String    @map("visual_title")
+  visualContent String    @db.Text @map("visual_content")
+  visualUrl     String    @db.Text @map("visual_url")
+  visualKey     String    @unique @db.VarChar(255) @map("visual_key")
+  createdAt     DateTime  @map("created_at")
+  updatedAt     DateTime? @map("updated_at")
+
+  @@map("visual_guide")
+}
