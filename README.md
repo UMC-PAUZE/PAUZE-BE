@@ -1,5 +1,21 @@
 # PAUZE-BE
 
+### 배포 (Elastic Beanstalk)
+
+- `main` push 또는 Actions `workflow_dispatch` → `.github/workflows/deploy.yml`
+- 환경: `pauze-dev` / `Pauze-dev-env` (`ap-northeast-2`)
+- Health: `GET /api/health` (예: `https://pauze.cloud/api/health`)
+- 앱 env는 GitHub Secret **`APP_ENV`** 하나에 `.env` 전체를 넣고, 배포 시 EB로 자동 반영
+
+**필수 Secrets**
+
+| Secret | 값 |
+| --- | --- |
+| `AWS_ROLE_TO_ASSUME` | `arn:aws:iam::693517970690:role/pauze-be-github-actions` |
+| `APP_ENV` | 로컬 `.env` 파일 내용 전체 (KEY=VALUE 줄들) |
+
+`APP_ENV`에 최소 포함: `DB_*`, `REDIS_*`, `JWT_*`, `SMTP_*`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `S3_PUBLIC_BASE_URL`. `PORT`는 있어도 무시됨.
+
 ### 브랜치 전략
 
 - `feat -> develop -> main` 순으로 merge

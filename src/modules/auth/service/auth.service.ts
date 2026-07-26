@@ -27,6 +27,7 @@ import {
   incrementEmailCodeAttempts,
   isEmailVerified,
   rotateRefreshToken,
+  RefreshTokenNotFoundError,
   saveEmailCode,
   saveEmailPending,
   saveEmailVerified,
@@ -1063,7 +1064,18 @@ export class AuthService {
     const newAccessToken = signAccessToken({ uid: user.uid, role: user.role });
     const newRefreshToken = signRefreshToken({ uid: user.uid, role: user.role });
 
-    await rotateRefreshToken(refreshToken, newRefreshToken);
+    try {
+      await rotateRefreshToken(refreshToken, newRefreshToken);
+    } catch (error) {
+      if (error instanceof RefreshTokenNotFoundError) {
+        throw new AppError({
+          code: AUTH_CODES.REFRESH_INVALID,
+          message: AUTH_MESSAGES.REFRESH_INVALID,
+          statusCode: 401,
+        });
+      }
+      throw error;
+    }
 
     return {
       accessToken: newAccessToken,

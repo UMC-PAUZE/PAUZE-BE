@@ -14,3 +14,6 @@ dist/
 
 # Cursor
 .cursor/
+
+# Local AWS CLI/SDK scratch
+.tmp-aws/

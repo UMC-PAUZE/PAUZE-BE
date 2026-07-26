@@ -143,13 +143,20 @@ export async function deleteRefreshTokenByUid(uid: string): Promise<void> {
   );
 }
 
+export class RefreshTokenNotFoundError extends Error {
+  constructor() {
+    super("Refresh token not found");
+    this.name = "RefreshTokenNotFoundError";
+  }
+}
+
 export async function rotateRefreshToken(
   oldRefreshToken: string,
   newRefreshToken: string
 ): Promise<void> {
   const existing = await getRefreshTokenData(oldRefreshToken);
   if (!existing) {
-    return;
+    throw new RefreshTokenNotFoundError();
   }
 
   await deleteRefreshToken(oldRefreshToken);
