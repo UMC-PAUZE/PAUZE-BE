@@ -19,5 +19,4 @@
       "esm": true,
       "authenticationModule": "./src/common/middlewares/tsoa.authentication.ts"
     }
-  }
-  
+}
