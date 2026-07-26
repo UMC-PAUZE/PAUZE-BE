@@ -58,12 +58,36 @@ function isUniqueConstraintError(
   error: unknown,
   field: string
 ): error is Prisma.PrismaClientKnownRequestError {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002" &&
-    Array.isArray(error.meta?.target) &&
-    error.meta.target.includes(field)
-  );
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
+  }
+
+  const meta = error.meta as
+    | { target?: string | string[]; constraint?: string }
+    | undefined;
+  const target = meta?.target;
+
+  if (Array.isArray(target)) {
+    return target.includes(field);
+  }
+  if (typeof target === "string") {
+    return target.includes(field);
+  }
+
+  // Driver adapters may omit target; fall back to constraint name / message.
+  const constraint = meta?.constraint;
+  if (typeof constraint === "string") {
+    return constraint.includes(field);
+  }
+  if (error.message.includes(field)) {
+    return true;
+  }
+
+  // No usable field metadata — still treat P2002 as the requested conflict.
+  return true;
 }
 
 export class UserService {

@@ -37,10 +37,16 @@ export async function saveRefreshToken(data: RefreshTokenData): Promise<string> 
   const refreshId = getRefreshId(data.refreshToken);
   const key = `refresh:${refreshId}`;
   const uidKey = `user_refresh:${data.uid}`;
+  const ttl = getRefreshTtlSeconds();
 
-  const oldRefreshId = await client.get(uidKey);
-  if (oldRefreshId && oldRefreshId !== refreshId) {
-    await client.del(`refresh:${oldRefreshId}`);
+  // 레거시 단일 세션 string 포인터 → 멀티 디바이스 set 마이그레이션
+  const uidKeyType = await client.type(uidKey);
+  if (uidKeyType === "string") {
+    const oldRefreshId = await client.get(uidKey);
+    await client.del(uidKey);
+    if (oldRefreshId) {
+      await client.sadd(uidKey, oldRefreshId);
+    }
   }
 
   await client.hset(key, {
@@ -48,8 +54,9 @@ export async function saveRefreshToken(data: RefreshTokenData): Promise<string> 
     provider_id: data.providerId,
     refresh_token: data.refreshToken,
   });
-  await client.expire(key, getRefreshTtlSeconds());
-  await client.set(uidKey, refreshId, "EX", getRefreshTtlSeconds());
+  await client.expire(key, ttl);
+  await client.sadd(uidKey, refreshId);
+  await client.expire(uidKey, ttl);
 
   return refreshId;
 }
@@ -73,7 +80,7 @@ export async function getRefreshTokenData(
   };
 }
 
-// Delete refresh hash and user_refresh:{uid} only when uid still maps to this refreshId.
+// 해당 기기 세션만 삭제하고, user_refresh set(또는 레거시 string)에서 id 제거
 const DELETE_REFRESH_TOKEN_SCRIPT = `
 local refreshKey = KEYS[1]
 local expectedRefreshId = ARGV[1]
@@ -81,22 +88,37 @@ local uid = redis.call('HGET', refreshKey, 'uid')
 redis.call('DEL', refreshKey)
 if type(uid) == 'string' and uid ~= '' then
   local uidKey = 'user_refresh:' .. uid
-  if redis.call('GET', uidKey) == expectedRefreshId then
-    redis.call('DEL', uidKey)
+  local keyType = redis.call('TYPE', uidKey)['ok']
+  if keyType == 'set' then
+    redis.call('SREM', uidKey, expectedRefreshId)
+    if redis.call('SCARD', uidKey) == 0 then
+      redis.call('DEL', uidKey)
+    end
+  elseif keyType == 'string' then
+    if redis.call('GET', uidKey) == expectedRefreshId then
+      redis.call('DEL', uidKey)
+    end
   end
 end
 return 1
 `;
 
-// Revoke mapped refresh record; delete user_refresh:{uid} only if it still matches.
+// 유저의 모든 세션 삭제 (set 또는 레거시 string)
 const DELETE_REFRESH_TOKEN_BY_UID_SCRIPT = `
 local uidKey = KEYS[1]
-local refreshId = redis.call('GET', uidKey)
-if type(refreshId) == 'string' and refreshId ~= '' then
-  redis.call('DEL', 'refresh:' .. refreshId)
-  if redis.call('GET', uidKey) == refreshId then
-    redis.call('DEL', uidKey)
+local keyType = redis.call('TYPE', uidKey)['ok']
+if keyType == 'set' then
+  local refreshIds = redis.call('SMEMBERS', uidKey)
+  for _, refreshId in ipairs(refreshIds) do
+    redis.call('DEL', 'refresh:' .. refreshId)
   end
+  redis.call('DEL', uidKey)
+elseif keyType == 'string' then
+  local refreshId = redis.call('GET', uidKey)
+  if type(refreshId) == 'string' and refreshId ~= '' then
+    redis.call('DEL', 'refresh:' .. refreshId)
+  end
+  redis.call('DEL', uidKey)
 end
 return 1
 `;
