@@ -9,16 +9,14 @@ export const calculateAccumulatedFatigue = ({
   const sorted = [...conditions].sort(
     (a, b) => a.conditionDate.getTime() - b.conditionDate.getTime(),
   );
-  let runStart: Date | null = null;
   let runEnd: Date | null = null;
+  let runLength = 0;
   let longest = 0;
 
   const closeRun = () => {
-    if (runStart && runEnd) {
-      longest = Math.max(longest, daysBetween(runStart, runEnd) + 1);
-    }
-    runStart = null;
+    longest = Math.max(longest, runLength);
     runEnd = null;
+    runLength = 0;
   };
 
   for (const condition of sorted) {
@@ -26,18 +24,19 @@ export const calculateAccumulatedFatigue = ({
       closeRun();
       continue;
     }
-    if (!runStart || !runEnd) {
-      runStart = condition.conditionDate;
+    if (!runEnd) {
       runEnd = condition.conditionDate;
+      runLength = 1;
       continue;
     }
     const gap = daysBetween(runEnd, condition.conditionDate);
     if (gap <= 2) {
       runEnd = condition.conditionDate;
+      runLength += 1;
     } else {
       closeRun();
-      runStart = condition.conditionDate;
       runEnd = condition.conditionDate;
+      runLength = 1;
     }
   }
   closeRun();

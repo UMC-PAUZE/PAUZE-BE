@@ -61,6 +61,19 @@ test("splits sleep groups in half and requires a 15 percent difference", () => {
   );
 });
 
+test("omits sleep correlation when both groups have the same sleep score", () => {
+  const records = [
+    record("2026-07-01", 20, { sleepLevel: "SIX_TO_EIGHT" }),
+    record("2026-07-02", 25, { sleepLevel: "SIX_TO_EIGHT" }),
+    record("2026-07-03", 30, { sleepLevel: "SIX_TO_EIGHT" }),
+    record("2026-07-04", 60, { sleepLevel: "SIX_TO_EIGHT" }),
+    record("2026-07-05", 65, { sleepLevel: "SIX_TO_EIGHT" }),
+    record("2026-07-06", 70, { sleepLevel: "SIX_TO_EIGHT" }),
+  ];
+
+  assert.equal(calculateSleepCorrelation(context(records)), null);
+});
+
 test("stores Top5 metrics and omits TOP_TRIGGER for a complete tie", () => {
   const result = calculateTopTrigger(context([record("2026-07-01", 40)]));
   assert.equal(result.ranks.length, 5);
@@ -98,7 +111,7 @@ test("bridges one missing day for accumulated fatigue", () => {
       record("2026-07-04", 55),
     ]),
   );
-  assert.equal(candidate?.metrics.consecutiveDays, 4);
+  assert.equal(candidate?.metrics.consecutiveDays, 3);
   assert.equal(
     calculateAccumulatedFatigue(
       context([
@@ -109,6 +122,19 @@ test("bridges one missing day for accumulated fatigue", () => {
     ),
     null,
   );
+});
+
+test("counts actual input days across repeated single-day fatigue gaps", () => {
+  const candidate = calculateAccumulatedFatigue(
+    context([
+      record("2026-07-01", 45),
+      record("2026-07-03", 50),
+      record("2026-07-05", 55),
+      record("2026-07-07", 60),
+    ]),
+  );
+
+  assert.equal(candidate?.metrics.consecutiveDays, 4);
 });
 
 test("calculates monthly trigger combinations and applies selector limits", () => {

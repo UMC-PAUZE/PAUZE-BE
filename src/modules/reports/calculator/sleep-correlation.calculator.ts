@@ -17,6 +17,16 @@ export const calculateSleepCorrelation = ({
 
   const rested = sorted.slice(0, groupSize);
   const deprived = sorted.slice(sorted.length - groupSize);
+  const restedBoundaryScore = getTriggerScore(
+    rested[rested.length - 1]!,
+    "SLEEP_DEPRIVATION",
+  );
+  const deprivedBoundaryScore = getTriggerScore(
+    deprived[0]!,
+    "SLEEP_DEPRIVATION",
+  );
+  if (restedBoundaryScore >= deprivedBoundaryScore) return null;
+
   const restedAverage = average(rested.map(({ sensitivityScore }) => sensitivityScore));
   const deprivedAverage = average(
     deprived.map(({ sensitivityScore }) => sensitivityScore),
