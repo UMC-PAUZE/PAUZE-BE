@@ -5,6 +5,7 @@ import { parseDurationToSeconds } from "./duration.util.js";
 let redis: Redis | null = null;
 
 const EMAIL_CODE_TTL_SECONDS = 300;
+const EMAIL_CODE_RESEND_COOLDOWN_SECONDS = 60;
 const EMAIL_VERIFIED_TTL_SECONDS = 600;
 export const EMAIL_CODE_MAX_ATTEMPTS = 5;
 
@@ -37,6 +38,11 @@ export async function saveRefreshToken(data: RefreshTokenData): Promise<string> 
   const key = `refresh:${refreshId}`;
   const uidKey = `user_refresh:${data.uid}`;
 
+  const oldRefreshId = await client.get(uidKey);
+  if (oldRefreshId && oldRefreshId !== refreshId) {
+    await client.del(`refresh:${oldRefreshId}`);
+  }
+
   await client.hset(key, {
     uid: data.uid,
     provider_id: data.providerId,
@@ -67,28 +73,52 @@ export async function getRefreshTokenData(
   };
 }
 
+// Delete refresh hash and user_refresh:{uid} only when uid still maps to this refreshId.
+const DELETE_REFRESH_TOKEN_SCRIPT = `
+local refreshKey = KEYS[1]
+local expectedRefreshId = ARGV[1]
+local uid = redis.call('HGET', refreshKey, 'uid')
+redis.call('DEL', refreshKey)
+if type(uid) == 'string' and uid ~= '' then
+  local uidKey = 'user_refresh:' .. uid
+  if redis.call('GET', uidKey) == expectedRefreshId then
+    redis.call('DEL', uidKey)
+  end
+end
+return 1
+`;
+
+// Revoke mapped refresh record; delete user_refresh:{uid} only if it still matches.
+const DELETE_REFRESH_TOKEN_BY_UID_SCRIPT = `
+local uidKey = KEYS[1]
+local refreshId = redis.call('GET', uidKey)
+if type(refreshId) == 'string' and refreshId ~= '' then
+  redis.call('DEL', 'refresh:' .. refreshId)
+  if redis.call('GET', uidKey) == refreshId then
+    redis.call('DEL', uidKey)
+  end
+end
+return 1
+`;
+
 export async function deleteRefreshToken(refreshToken: string): Promise<void> {
   const client = getRedisClient();
   const refreshId = getRefreshId(refreshToken);
-  const stored = await client.hgetall(`refresh:${refreshId}`);
-  await client.del(`refresh:${refreshId}`);
-  if (stored.uid) {
-    const uidKey = `user_refresh:${stored.uid}`;
-    const current = await client.get(uidKey);
-    if (current === refreshId) {
-      await client.del(uidKey);
-    }
-  }
+  await client.eval(
+    DELETE_REFRESH_TOKEN_SCRIPT,
+    1,
+    `refresh:${refreshId}`,
+    refreshId
+  );
 }
 
 export async function deleteRefreshTokenByUid(uid: string): Promise<void> {
   const client = getRedisClient();
-  const uidKey = `user_refresh:${uid}`;
-  const refreshId = await client.get(uidKey);
-  if (refreshId) {
-    await client.del(`refresh:${refreshId}`);
-  }
-  await client.del(uidKey);
+  await client.eval(
+    DELETE_REFRESH_TOKEN_BY_UID_SCRIPT,
+    1,
+    `user_refresh:${uid}`
+  );
 }
 
 export async function rotateRefreshToken(
@@ -113,7 +143,8 @@ export type EmailPendingPurpose = "SIGNUP" | "LINK";
 export interface SignupPendingPayload {
   purpose: "SIGNUP";
   email: string;
-  password: string;
+  salt: string;
+  hashedPassword: string;
   name: string;
   nickname: string;
   birth: string;
@@ -127,6 +158,19 @@ export interface LinkPendingPayload {
 }
 
 export type EmailPendingPayload = SignupPendingPayload | LinkPendingPayload;
+
+/** Returns true when a send slot was claimed; false when still in cooldown. */
+export async function claimEmailCodeSendSlot(email: string): Promise<boolean> {
+  const client = getRedisClient();
+  const result = await client.set(
+    `email:code:cooldown:${email}`,
+    "1",
+    "EX",
+    EMAIL_CODE_RESEND_COOLDOWN_SECONDS,
+    "NX"
+  );
+  return result === "OK";
+}
 
 export async function saveEmailCode(email: string, code: string): Promise<void> {
   const client = getRedisClient();

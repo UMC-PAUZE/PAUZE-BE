@@ -69,6 +69,7 @@ model Oauth {
   user       User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
 
   @@unique([uid, socialType])
+  @@unique([socialType, providerId])
   @@index([loginEmail, socialType])
   @@map("oauth")
 }

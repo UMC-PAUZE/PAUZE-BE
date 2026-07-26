@@ -40,14 +40,23 @@ export interface KakaoSignupRequestDto {
   nickname: string;
   birth: string;
   kakaoAccessToken: string;
+  termAgreements: TermAgreementDto[];
 }
 
-export interface LinkAccountRequestDto {
-  agree: boolean;
-  kakaoAccessToken: string;
-  email?: string;
-  password?: string;
-}
+/** Email+password required when adding LOCAL to an existing KAKAO account. */
+export type LinkAccountRequestDto =
+  | {
+      agree: boolean;
+      kakaoAccessToken: string;
+      email: string;
+      password: string;
+    }
+  | {
+      agree: boolean;
+      kakaoAccessToken: string;
+      email?: never;
+      password?: string;
+    };
 
 export interface LogoutRequestDto {
   refreshToken?: string;

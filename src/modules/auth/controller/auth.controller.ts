@@ -66,7 +66,7 @@ export class AuthController extends Controller {
 
   @Post("email/verify")
   @SuccessResponse(200, "OK")
-  @Response(201, "Created")
+  @Response<ApiSuccessResponse<AuthTokenResultDto>>(201, "Created")
   @Response(400, "Bad Request")
   public async verifyEmail(
     @Body() body: EmailVerifyRequestDto
@@ -75,18 +75,18 @@ export class AuthController extends Controller {
   > {
     const result = await authService.verifyEmail(body);
 
-    if ("accessToken" in result) {
-      this.setStatus(201);
+    if ("nextStep" in result && result.nextStep === "ASK_LINK") {
       return success(
-        AUTH_CODES.LOCAL_SIGNUP_SUCCESS,
-        AUTH_MESSAGES.LOCAL_SIGNUP_SUCCESS,
+        AUTH_CODES.EMAIL_VERIFIED,
+        AUTH_MESSAGES.EMAIL_VERIFIED,
         result
       );
     }
 
+    this.setStatus(201);
     return success(
-      AUTH_CODES.EMAIL_VERIFIED,
-      AUTH_MESSAGES.EMAIL_VERIFIED,
+      AUTH_CODES.LOCAL_SIGNUP_SUCCESS,
+      AUTH_MESSAGES.LOCAL_SIGNUP_SUCCESS,
       result
     );
   }

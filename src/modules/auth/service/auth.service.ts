@@ -20,6 +20,7 @@ import {
   deleteRefreshTokenByUid,
   EMAIL_CODE_EXPIRES_IN,
   EMAIL_CODE_MAX_ATTEMPTS,
+  claimEmailCodeSendSlot,
   getEmailCode,
   getEmailPending,
   getRefreshTokenData,
@@ -108,7 +109,12 @@ export class AuthService {
   private async checkEmailConflict(email: string): Promise<EmailConflictResult> {
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { oauths: true },
+      select: {
+        email: true,
+        oauths: {
+          select: { socialType: true },
+        },
+      },
     });
 
     if (!user) {
@@ -217,11 +223,21 @@ export class AuthService {
     let kakaoUser;
     try {
       kakaoUser = await fetchKakaoUser(kakaoAccessToken.trim());
-    } catch {
+    } catch (error) {
+      const isTimeout =
+        (error instanceof Error && error.name === "AbortError") ||
+        (typeof DOMException !== "undefined" &&
+          error instanceof DOMException &&
+          error.name === "AbortError");
+      console.error("Kakao user fetch failed", {
+        message: error instanceof Error ? error.message : "unknown",
+        name: error instanceof Error ? error.name : undefined,
+        statusCode: isTimeout ? 503 : 502,
+      });
       throw new AppError({
         code: AUTH_CODES.KAKAO_LOGIN_FAILED,
         message: AUTH_MESSAGES.KAKAO_LOGIN_FAILED,
-        statusCode: 500,
+        statusCode: isTimeout ? 503 : 502,
       });
     }
 
@@ -240,7 +256,16 @@ export class AuthService {
     email: string,
     pending: SignupPendingPayload | LinkPendingPayload
   ): Promise<EmailCodeSentResultDto> {
+    if (!(await claimEmailCodeSendSlot(email))) {
+      throw new AppError({
+        code: AUTH_CODES.EMAIL_CODE_TOO_SOON,
+        message: AUTH_MESSAGES.EMAIL_CODE_TOO_SOON,
+        statusCode: 429,
+      });
+    }
+
     const code = generateVerificationCode();
+    await deleteEmailCodeAttempts(email);
     await saveEmailCode(email, code);
     await saveEmailPending(email, pending);
     try {
@@ -324,17 +349,29 @@ export class AuthService {
     }
 
     try {
+      const salt = generateSalt();
+      const hashedPassword = hashPassword(salt, body.password);
       return await this.sendCodeAndStorePending(email, {
         purpose: "SIGNUP",
         email,
-        password: body.password,
+        salt,
+        hashedPassword,
         name,
         nickname,
         birth: body.birth,
         termAgreements: body.termAgreements,
       });
     } catch (error) {
-      console.error("회원가입 실제 오류:", error);
+      console.error("Signup email code send failed", {
+        code:
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          typeof (error as { code: unknown }).code === "string"
+            ? (error as { code: string }).code
+            : undefined,
+        message: error instanceof Error ? error.message : "unknown",
+      });
 
       if (error instanceof AppError) {
         throw error;
@@ -428,16 +465,20 @@ export class AuthService {
     }
 
     const email = body.email.trim().toLowerCase();
+    const attempts = await incrementEmailCodeAttempts(email);
+    if (attempts > EMAIL_CODE_MAX_ATTEMPTS) {
+      await deleteEmailCode(email);
+      await deleteEmailPending(email);
+      await deleteEmailCodeAttempts(email);
+      throw new AppError({
+        code: AUTH_CODES.EMAIL_CODE_INVALID,
+        message: AUTH_MESSAGES.EMAIL_CODE_INVALID,
+        statusCode: 400,
+      });
+    }
+
     const storedCode = await getEmailCode(email);
     if (!storedCode || storedCode !== body.code.trim()) {
-      if (storedCode) {
-        const attempts = await incrementEmailCodeAttempts(email);
-        if (attempts >= EMAIL_CODE_MAX_ATTEMPTS) {
-          await deleteEmailCode(email);
-          await deleteEmailPending(email);
-          await deleteEmailCodeAttempts(email);
-        }
-      }
       throw new AppError({
         code: AUTH_CODES.EMAIL_CODE_INVALID,
         message: AUTH_MESSAGES.EMAIL_CODE_INVALID,
@@ -468,9 +509,6 @@ export class AuthService {
 
     await this.assertNicknameAvailable(pending.nickname);
 
-    const salt = generateSalt();
-    const hashedPassword = hashPassword(salt, pending.password);
-
     let user;
     try {
       user = await prisma.$transaction(async (tx) => {
@@ -487,8 +525,8 @@ export class AuthService {
           data: {
             uid: createdUser.uid,
             socialType: SocialType.LOCAL,
-            providerId: salt,
-            password: hashedPassword,
+            providerId: pending.salt,
+            password: pending.hashedPassword,
             loginEmail: pending.email,
           },
         });
@@ -522,7 +560,7 @@ export class AuthService {
     }
 
     await deleteEmailPending(email);
-    const tokens = await this.issueTokens(user, salt);
+    const tokens = await this.issueTokens(user, pending.salt);
 
     return {
       ...tokens,
@@ -596,7 +634,16 @@ export class AuthService {
     const kakaoUser = await this.requireKakaoUser(body.kakaoAccessToken);
     const kakaoEmail = kakaoUser.email.toLowerCase();
 
-    // LOCAL → KAKAO: email + password required (after email verify)
+    // Reject email-only payloads (password required when linking email credentials).
+    if ("email" in body && body.email && !body.password) {
+      throw new AppError({
+        code: AUTH_CODES.LINK_INVALID_REQUEST,
+        message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+        statusCode: 400,
+      });
+    }
+
+    // KAKAO → LOCAL: existing KAKAO account receives LOCAL credentials
     if (body.email && body.password) {
       const email = body.email.trim().toLowerCase();
 
@@ -655,15 +702,26 @@ export class AuthService {
       const salt = generateSalt();
       const hashedPassword = hashPassword(salt, body.password);
 
-      await prisma.oauth.create({
-        data: {
-          uid: user.uid,
-          socialType: SocialType.LOCAL,
-          providerId: salt,
-          password: hashedPassword,
-          loginEmail: email,
-        },
-      });
+      try {
+        await prisma.oauth.create({
+          data: {
+            uid: user.uid,
+            socialType: SocialType.LOCAL,
+            providerId: salt,
+            password: hashedPassword,
+            loginEmail: email,
+          },
+        });
+      } catch (error) {
+        if (this.isUniqueConstraintError(error)) {
+          throw new AppError({
+            code: AUTH_CODES.LINK_INVALID_REQUEST,
+            message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+            statusCode: 409,
+          });
+        }
+        throw error;
+      }
 
       await deleteEmailVerified(email);
       const tokens = await this.issueTokens(user, salt);
@@ -674,7 +732,7 @@ export class AuthService {
       };
     }
 
-    // KAKAO → LOCAL: link kakao onto existing local account
+    // LOCAL → KAKAO: link kakao onto existing local account
     const user = await prisma.user.findUnique({
       where: { email: kakaoEmail },
       include: { oauths: true },
@@ -704,9 +762,7 @@ export class AuthService {
     }
 
     const emailVerified = await isEmailVerified(kakaoEmail);
-    if (emailVerified) {
-      await deleteEmailVerified(kakaoEmail);
-    } else {
+    if (!emailVerified) {
       const localOauth = user.oauths.find(
         (oauth) => oauth.socialType === SocialType.LOCAL
       );
@@ -727,15 +783,30 @@ export class AuthService {
       }
     }
 
-    await prisma.oauth.create({
-      data: {
-        uid: user.uid,
-        socialType: SocialType.KAKAO,
-        providerId: kakaoUser.providerId,
-        password: null,
-        loginEmail: kakaoEmail,
-      },
-    });
+    try {
+      await prisma.oauth.create({
+        data: {
+          uid: user.uid,
+          socialType: SocialType.KAKAO,
+          providerId: kakaoUser.providerId,
+          password: null,
+          loginEmail: kakaoEmail,
+        },
+      });
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        throw new AppError({
+          code: AUTH_CODES.LINK_INVALID_REQUEST,
+          message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+          statusCode: 409,
+        });
+      }
+      throw error;
+    }
+
+    if (emailVerified) {
+      await deleteEmailVerified(kakaoEmail);
+    }
 
     const tokens = await this.issueTokens(user, kakaoUser.providerId);
 
@@ -750,10 +821,12 @@ export class AuthService {
   ): Promise<AuthTokenResultDto | KakaoSignupRequiredResultDto> {
     const kakaoUser = await this.requireKakaoUser(body.kakaoAccessToken);
 
-    const existingOauth = await prisma.oauth.findFirst({
+    const existingOauth = await prisma.oauth.findUnique({
       where: {
-        socialType: SocialType.KAKAO,
-        providerId: kakaoUser.providerId,
+        socialType_providerId: {
+          socialType: SocialType.KAKAO,
+          providerId: kakaoUser.providerId,
+        },
       },
       include: { user: true },
     });
@@ -817,6 +890,8 @@ export class AuthService {
       !body.name ||
       !body.nickname ||
       !body.birth ||
+      !Array.isArray(body.termAgreements) ||
+      body.termAgreements.length === 0 ||
       !isValidName(body.name) ||
       !isValidNickname(body.nickname) ||
       !isValidBirth(body.birth)
@@ -828,15 +903,29 @@ export class AuthService {
       });
     }
 
+    for (const agreement of body.termAgreements) {
+      if (!agreement.agreed) {
+        throw new AppError({
+          code: AUTH_CODES.KAKAO_SIGNUP_INVALID_REQUEST,
+          message: AUTH_MESSAGES.KAKAO_SIGNUP_INVALID_REQUEST,
+          statusCode: 400,
+        });
+      }
+    }
+
+    await this.validateTermAgreements(body.termAgreements);
+
     const kakaoUser = await this.requireKakaoUser(body.kakaoAccessToken);
     const nickname = body.nickname.trim();
     const name = body.name.trim();
     const email = kakaoUser.email.toLowerCase();
 
-    const existingOauth = await prisma.oauth.findFirst({
+    const existingOauth = await prisma.oauth.findUnique({
       where: {
-        socialType: SocialType.KAKAO,
-        providerId: kakaoUser.providerId,
+        socialType_providerId: {
+          socialType: SocialType.KAKAO,
+          providerId: kakaoUser.providerId,
+        },
       },
     });
     if (existingOauth) {
@@ -881,6 +970,14 @@ export class AuthService {
             password: null,
             loginEmail: email,
           },
+        });
+
+        await tx.userTerm.createMany({
+          data: body.termAgreements.map((agreement) => ({
+            uid: createdUser.uid,
+            termId: BigInt(agreement.termId),
+            termActive: agreement.agreed,
+          })),
         });
 
         return createdUser;
