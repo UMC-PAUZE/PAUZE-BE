@@ -40,6 +40,7 @@
     "multer": "^2.2.0",
     "multer-s3": "^3.0.1",
     "mysql2": "^3.22.5",
+    "nodemailer": "^9.0.3",
     "prisma": "^7.8.0",
     "swagger-ui-express": "^5.0.1",
     "tsoa": "^7.0.0-alpha.0",
@@ -52,7 +53,9 @@
     "@types/express": "^5.0.6",
     "@types/ioredis": "^4.28.10",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.2.0",
     "@types/node": "^26.0.1",
+    "@types/nodemailer": "^8.0.1",
     "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2"
