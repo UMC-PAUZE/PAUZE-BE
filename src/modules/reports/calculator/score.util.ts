@@ -12,8 +12,8 @@ export const TRIGGER_CODES: readonly ReportTriggerCode[] = [
 export const TRIGGER_NAMES: Record<ReportTriggerCode, string> = {
   SLEEP_DEPRIVATION: "수면 부족",
   NOISE_EXPOSURE: "소음 노출",
-  VISUAL_OVERLOAD: "시각 과부하",
-  SOCIAL_FATIGUE: "사회 피로",
+  VISUAL_OVERLOAD: "과한 시각 정보",
+  SOCIAL_FATIGUE: "사회피로",
   ENERGY_DEPLETION: "에너지 소진",
 };
 
