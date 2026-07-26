@@ -25,7 +25,9 @@ import type {
 } from "../dto/user.dto.js";
 import { USER_CODES, USER_MESSAGES } from "../errors/user.errors.js";
 
-type UserWithOauths = Prisma.UserGetPayload<{ include: { oauths: true } }>;
+type UserWithOauths = Prisma.UserGetPayload<{
+  include: { oauths: { select: { socialType: true } } };
+}>;
 
 function formatJoinedAt(date: Date): string {
   const year = date.getUTCFullYear();
@@ -94,7 +96,11 @@ export class UserService {
   private async findUserOrThrow(uid: string): Promise<UserWithOauths> {
     const user = await prisma.user.findUnique({
       where: { uid },
-      include: { oauths: true },
+      include: {
+        oauths: {
+          select: { socialType: true },
+        },
+      },
     });
 
     if (!user) {
