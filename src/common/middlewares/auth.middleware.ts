@@ -7,9 +7,6 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/signup",
   "/auth/login",
   "/auth/refresh",
-  "/auth/kakao",
-  "/auth/email/verify",
-  "/auth/link",
   "/visual-guides"
 ];
 
