@@ -1,0 +1,12 @@
+node_modules/
+.git/
+.github/
+.env
+.env.*
+.tmp-aws/
+.idea/
+.cursor/
+.vscode/
+.DS_Store
+*.md
+.coderabbit.yaml
