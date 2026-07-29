@@ -24,9 +24,15 @@ export class PauzeUsageRepository {
     });
   }
 
-  async findCompletedDates(uid: string): Promise<{ completedAt: Date }[]> {
+  async findCompletedDates(
+    uid: string,
+    options?: { since?: Date },
+  ): Promise<{ completedAt: Date }[]> {
     return this.db.pauzeUsage.findMany({
-      where: { uid },
+      where: {
+        uid,
+        ...(options?.since ? { completedAt: { gte: options.since } } : {}),
+      },
       select: {
         completedAt: true,
       },
