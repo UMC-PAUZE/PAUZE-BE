@@ -28,6 +28,8 @@ import {
   MonthlyReportFetchFailedError,
   WeeklyReportFetchFailedError,
 } from "../errors/report.errors.js";
+import { generateInsightContent } from "../generator/insight-content.generator.js";
+import { createReportSourceHash } from "../generator/report-source-hash.util.js";
 import {
   findConditionsByUserAndDateRange,
   findPauzeUsagesByUserAndDateRange,
@@ -35,8 +37,6 @@ import {
   replaceStoredReport,
 } from "../repository/report.repository.js";
 import { selectInsights } from "../selector/insight.selector.js";
-import { createInsightContent } from "../template/insight-template.service.js";
-import { validateInsightContent } from "../validator/insight.validator.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -257,7 +257,7 @@ const generateCurrentReport = async (
   range: DateRange,
 ) => {
   const previousStart = getPreviousStart(periodType, range);
-  const [records, usages] = await Promise.all([
+  const [records, usages, existingReport] = await Promise.all([
     findConditionsByUserAndDateRange(
       uid,
       previousStart,
@@ -268,6 +268,7 @@ const generateCurrentReport = async (
       toUtcInstantFromKstDate(range.start),
       toUtcInstantFromKstDate(range.calculationEndExclusive),
     ),
+    findStoredReport(uid, periodType, range.start, range.periodEnd),
   ]);
   const current = records.filter(
     ({ conditionDate }) => conditionDate >= range.start,
@@ -281,12 +282,39 @@ const generateCurrentReport = async (
     pauzeDates: new Set(usages.map(toKstDateKey)),
   };
   const { candidates, ranks } = createCandidates(context);
-  const contents = candidates.map((candidate) => {
-    const content = createInsightContent(candidate, periodType);
-    return validateInsightContent(content, candidate)
-      ? content
-      : "현재 데이터에서 확인할 수 있는 패턴을 정리했어요.";
-  });
+  const reusableByType = new Map(
+    (existingReport?.insights ?? []).map((insight) => [
+      insight.insightType,
+      insight,
+    ]),
+  );
+  const generatedInsights = await Promise.all(
+    candidates.map((candidate) =>
+      generateInsightContent(
+        candidate,
+        periodType,
+        reusableByType.get(candidate.type),
+      ),
+    ),
+  );
+  const sourceDataHash = createReportSourceHash(records, usages);
+  const canReuseStoredReport =
+    existingReport?.sourceDataHash === sourceDataHash &&
+    existingReport.insights.length === generatedInsights.length &&
+    generatedInsights.every((generated, index) => {
+      const existing = existingReport.insights[index];
+      return (
+        existing?.insightType === generated.candidate.type &&
+        existing.content === generated.content &&
+        existing.calculationHash === generated.calculationHash &&
+        existing.generationSource === generated.generationSource &&
+        existing.modelName === generated.modelName &&
+        existing.promptVersion === generated.promptVersion
+      );
+    });
+  if (canReuseStoredReport) {
+    return { stored: existingReport, current, previous };
+  }
   const currentAverage = reportAverage(current);
   const previousAverage =
     previous.length > 0 ? reportAverage(previous) : null;
@@ -304,9 +332,9 @@ const generateCurrentReport = async (
         ? null
         : roundOne(currentAverage - previousAverage),
     pauzeCount: usages.length,
+    sourceDataHash,
     triggerRanks: ranks,
-    insights: candidates,
-    insightContents: contents,
+    insights: generatedInsights,
   });
   return { stored, current, previous };
 };

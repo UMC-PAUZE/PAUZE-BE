@@ -85,6 +85,11 @@ enum ReportInsightType {
   INSUFFICIENT_DATA
 }
 
+enum InsightGenerationSource {
+  AI
+  TEMPLATE
+}
+
 model User {
   uid                   String     @id @default(uuid()) @db.Char(36)
   email                 String     @unique @db.VarChar(255)
@@ -230,11 +235,11 @@ model SearchHistory {
 model AudioCategory {
   categoryId   BigInt    @id @map("category_id")
   categoryName String    @db.VarChar(50) @map("category_name")
-  
+
   // 외래키로 변경
   codeId       Int       @map("code_id")
   audioCode    AudioCode @relation(fields: [codeId], references: [id])
-  
+
   createdAt    DateTime  @map("created_at")
   updatedAt    DateTime? @map("updated_at")
   audioGuides  AudioGuide[]
@@ -365,6 +370,7 @@ model SensitivityReport {
   previousAverageScore Decimal?   @map("previous_average_score") @db.Decimal(5, 2)
   scoreChange          Decimal?   @map("score_change") @db.Decimal(5, 2)
   pauzeCount           Int        @default(0) @map("pauze_count")
+  sourceDataHash       String?    @map("source_data_hash") @db.Char(64)
   createdAt            DateTime   @map("created_at")
   updatedAt            DateTime   @updatedAt @map("updated_at")
 
@@ -396,17 +402,25 @@ model ReportTriggerRank {
 }
 
 model ReportInsight {
-  insightId    BigInt            @id @default(autoincrement()) @map("insight_id")
-  reportId     BigInt            @map("report_id")
-  insightType  ReportInsightType @map("insight_type")
-  content      String            @db.Text
-  displayOrder Int               @map("display_order")
-  createdAt    DateTime          @map("created_at")
-  updatedAt    DateTime          @updatedAt @map("updated_at")
+  insightId        BigInt                  @id @default(autoincrement()) @map("insight_id")
+  reportId         BigInt                  @map("report_id")
+  insightType      ReportInsightType       @map("insight_type")
+  content          String                  @db.Text
+  displayOrder     Int                     @map("display_order")
+  generationSource InsightGenerationSource @default(TEMPLATE) @map("generation_source")
+  modelName        String?                 @map("model_name") @db.VarChar(100)
+  promptVersion    String                  @default("v1") @map("prompt_version") @db.VarChar(50)
+  metricsJson      Json?                   @map("metrics_json")
+  calculationHash  String?                 @map("calculation_hash") @db.Char(64)
+  generatedAt      DateTime?               @map("generated_at")
+  generationError  String?                 @map("generation_error") @db.VarChar(50)
+  createdAt        DateTime                @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
 
   report SensitivityReport @relation(fields: [reportId], references: [reportId], onDelete: Cascade)
 
   @@index([reportId, displayOrder])
+  @@index([calculationHash])
   @@map("report_insight")
 }
 
