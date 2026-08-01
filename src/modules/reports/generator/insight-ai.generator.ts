@@ -63,7 +63,9 @@ const errorStatus = (error: unknown): number | undefined => {
 
 const isTimeout = (error: unknown): boolean =>
   error instanceof Error &&
-  (error.name === "AbortError" || /timeout|timed out/i.test(error.message));
+  (error.name === "AbortError" ||
+    error.name === "TimeoutError" ||
+    /timeout|timed out/i.test(error.message));
 
 const classifyError = (error: unknown): InsightGenerationError => {
   if (isTimeout(error)) return "AI_TIMEOUT";

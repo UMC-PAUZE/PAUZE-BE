@@ -6,6 +6,7 @@ import type {
 import { createInsightContent } from "../template/insight-template.service.js";
 import { validateInsightContent } from "../validator/insight.validator.js";
 import { generateAiInsight } from "./insight-ai.generator.js";
+import type { AiGenerationResult } from "./insight-ai.generator.js";
 import { createInsightCalculationHash } from "./insight-hash.util.js";
 import type { GeneratedInsight } from "./insight-generation.types.js";
 
@@ -19,6 +20,13 @@ export interface ReusableInsight {
   generationError: string | null;
 }
 
+type AiInsightGenerator = (
+  candidate: InsightCandidate,
+  periodType: ReportPeriodType,
+  templateContent: string,
+  config: ReturnType<typeof getGeminiInsightConfig>,
+) => Promise<AiGenerationResult>;
+
 const SAFE_FALLBACK =
   "아직 확인할 수 있는 패턴이 충분하지 않아요. 컨디션을 꾸준히 기록해보세요.";
 
@@ -26,6 +34,7 @@ export const generateInsightContent = async (
   candidate: InsightCandidate,
   periodType: ReportPeriodType,
   reusable?: ReusableInsight,
+  aiGenerator: AiInsightGenerator = generateAiInsight,
 ): Promise<GeneratedInsight> => {
   const config = getGeminiInsightConfig();
   const calculationHash = createInsightCalculationHash(
@@ -37,7 +46,10 @@ export const generateInsightContent = async (
 
   if (
     reusable?.calculationHash === calculationHash &&
-    (config.enabled || reusable.generationSource === "TEMPLATE")
+    ((config.enabled && reusable.generationSource === "AI") ||
+      (!config.enabled &&
+        reusable.generationSource === "TEMPLATE" &&
+        reusable.generationError === "AI_DISABLED"))
   ) {
     return {
       candidate,
@@ -56,7 +68,7 @@ export const generateInsightContent = async (
   const templateContent = validateInsightContent(rawTemplate, candidate)
     ? rawTemplate
     : SAFE_FALLBACK;
-  const aiResult = await generateAiInsight(
+  const aiResult = await aiGenerator(
     candidate,
     periodType,
     templateContent,

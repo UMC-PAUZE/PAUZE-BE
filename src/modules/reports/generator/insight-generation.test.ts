@@ -99,6 +99,64 @@ test("uses a template without calling Gemini when AI is disabled", async () => {
   }
 });
 
+test("retries AI generation after a cached template caused by a timeout", async () => {
+  const previousEnabled = process.env.GEMINI_INSIGHT_ENABLED;
+  const previousApiKey = process.env.GEMINI_API_KEY;
+  const previousModel = process.env.GEMINI_INSIGHT_MODEL;
+  const previousPromptVersion = process.env.GEMINI_INSIGHT_PROMPT_VERSION;
+  process.env.GEMINI_INSIGHT_ENABLED = "true";
+  process.env.GEMINI_API_KEY = "test-api-key";
+  process.env.GEMINI_INSIGHT_MODEL = "test-model";
+  process.env.GEMINI_INSIGHT_PROMPT_VERSION = "v1";
+
+  let calls = 0;
+  const calculationHash = createInsightCalculationHash(
+    candidate,
+    "WEEKLY",
+    "v1",
+    "test-model",
+  );
+
+  try {
+    const result = await generateInsightContent(
+      candidate,
+      "WEEKLY",
+      {
+        content: "수면이 충분했던 날은 예민함이 평균 18% 낮았어요.",
+        calculationHash,
+        generationSource: "TEMPLATE",
+        modelName: null,
+        promptVersion: "v1",
+        generatedAt: null,
+        generationError: "AI_TIMEOUT",
+      },
+      async () => {
+        calls += 1;
+        return {
+          content: "수면이 충분했던 날은 예민함이 평균 18% 낮았어요.",
+          error: null,
+        };
+      },
+    );
+
+    assert.equal(calls, 1);
+    assert.equal(result.generationSource, "AI");
+    assert.equal(result.generationError, null);
+  } finally {
+    if (previousEnabled === undefined) delete process.env.GEMINI_INSIGHT_ENABLED;
+    else process.env.GEMINI_INSIGHT_ENABLED = previousEnabled;
+    if (previousApiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previousApiKey;
+    if (previousModel === undefined) delete process.env.GEMINI_INSIGHT_MODEL;
+    else process.env.GEMINI_INSIGHT_MODEL = previousModel;
+    if (previousPromptVersion === undefined) {
+      delete process.env.GEMINI_INSIGHT_PROMPT_VERSION;
+    } else {
+      process.env.GEMINI_INSIGHT_PROMPT_VERSION = previousPromptVersion;
+    }
+  }
+});
+
 test("creates a stable source hash and changes it when usage data changes", () => {
   const records = [
     {
