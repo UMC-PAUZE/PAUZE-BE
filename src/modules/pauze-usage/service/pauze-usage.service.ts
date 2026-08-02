@@ -39,10 +39,16 @@ export class PauzeUsageService {
           } else {
             throw error;
           }
-        } catch {
+        } catch (fallbackError) {
+          // eslint-disable-next-line no-console
+          console.error(
+            "[PauzeUsageService] save fallback failed",
+            fallbackError,
+          );
           throw this.createSaveFailedError();
         }
       } else {
+        console.error("[PauzeUsageService] save failed", error);
         throw this.createSaveFailedError();
       }
     }
@@ -85,7 +91,9 @@ export class PauzeUsageService {
         totalUsageCount,
         currentStreakDays: this.calculateCurrentStreak(usageDays),
       };
-    } catch {
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[PauzeUsageService] statistics query failed", error);
       throw new AppError({
         code: PAUZE_USAGE_CODES.STATISTICS_GET_FAILED,
         message: PAUZE_USAGE_MESSAGES.STATISTICS_GET_FAILED,
