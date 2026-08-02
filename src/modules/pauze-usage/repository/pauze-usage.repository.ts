@@ -18,6 +18,22 @@ export class PauzeUsageRepository {
     });
   }
 
+  async findByUserAndCompletionId(uid: string, completionId: string) {
+    return this.db.pauzeUsage.findUnique({
+      where: {
+        uid_completionId: {
+          uid,
+          completionId,
+        },
+      },
+      select: {
+        usageId: true,
+        completionId: true,
+        completedAt: true,
+      },
+    });
+  }
+
   async countByUser(uid: string): Promise<number> {
     return this.db.pauzeUsage.count({
       where: { uid },

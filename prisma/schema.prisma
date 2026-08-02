@@ -415,7 +415,7 @@ model PauzeUsage {
   usageId      BigInt   @id @default(autoincrement()) @map("usage_id")
   uid          String   @db.Char(36)
   completionId String   @db.Char(36)
-  completedAt  DateTime @default(now()) @db.Timestamp(3)
+  completedAt  DateTime @default(now()) @db.DateTime(3)
 
   user User @relation(fields: [uid], references: [uid], onDelete: Cascade, map: "pauze_usage_uid_fkey")
 

@@ -6,31 +6,50 @@ import { PauzeUsageService } from "./pauze-usage.service.js";
 
 test("사용 완료 이력 저장하고 API 응답 형식으로 변환", async () => {
   const completedAt = new Date("2026-07-24T03:30:00.000Z");
+  const completionId = "550e8400-e29b-41d4-a716-446655440000";
   const repository = {
-    async create(uid: string, completionId: string) {
+    async create(uid: string, receivedCompletionId: string) {
       assert.equal(uid, "user-uid");
-      assert.match(
-        completionId,
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-      );
+      assert.equal(receivedCompletionId, completionId);
 
       return {
         usageId: 15n,
-        completionId,
+        completionId: receivedCompletionId,
         completedAt,
       };
     },
   } as unknown as PauzeUsageRepository;
   const service = new PauzeUsageService(repository);
 
-  const result = await service.recordUsage("user-uid");
+  const result = await service.recordUsage("user-uid", completionId);
 
   assert.equal(result.usageId, "15");
   assert.equal(result.completedAt, "2026-07-24T03:30:00.000Z");
-  assert.match(
-    result.completionId,
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-  );
+  assert.equal(result.completionId, completionId);
+});
+
+test("같은 completionId 재요청은 기존 기록을 반환", async () => {
+  const completionId = "550e8400-e29b-41d4-a716-446655440000";
+  const completedAt = new Date("2026-07-24T03:30:00.000Z");
+  const repository = {
+    async create() {
+      throw { code: "P2002" };
+    },
+    async findByUserAndCompletionId(uid: string, receivedCompletionId: string) {
+      assert.equal(uid, "user-uid");
+      assert.equal(receivedCompletionId, completionId);
+      return { usageId: 15n, completionId, completedAt };
+    },
+  } as unknown as PauzeUsageRepository;
+  const service = new PauzeUsageService(repository);
+
+  const result = await service.recordUsage("user-uid", completionId);
+
+  assert.deepEqual(result, {
+    usageId: "15",
+    completionId,
+    completedAt: "2026-07-24T03:30:00.000Z",
+  });
 });
 
 test("저장 실패를 AGGREGATION_SAVE_FAILED_500 오류로 변환", async () => {
@@ -41,7 +60,7 @@ test("저장 실패를 AGGREGATION_SAVE_FAILED_500 오류로 변환", async () =
   } as unknown as PauzeUsageRepository;
   const service = new PauzeUsageService(repository);
 
-  await assert.rejects(service.recordUsage("user-uid"), (error: unknown) => {
+  await assert.rejects(service.recordUsage("user-uid", "550e8400-e29b-41d4-a716-446655440000"), (error: unknown) => {
     assert.ok(error instanceof AppError);
     assert.equal(error.statusCode, 500);
     assert.equal(error.code, "AGGREGATION_SAVE_FAILED_500");
@@ -62,7 +81,7 @@ test("저장 이후 응답 변환 오류를 저장 실패 오류로 가리지 �
   } as unknown as PauzeUsageRepository;
   const service = new PauzeUsageService(repository);
 
-  await assert.rejects(service.recordUsage("user-uid"), (error: unknown) => {
+  await assert.rejects(service.recordUsage("user-uid", "550e8400-e29b-41d4-a716-446655440000"), (error: unknown) => {
     assert.ok(error instanceof TypeError);
     assert.ok(!(error instanceof AppError));
     return true;

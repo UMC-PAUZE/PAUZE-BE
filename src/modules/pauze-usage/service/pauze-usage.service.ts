@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { AppError } from "../../../common/errors/app.error.js";
 import type {
   PauzeUsageRecordResult,
@@ -19,17 +18,33 @@ export class PauzeUsageService {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  async recordUsage(uid: string): Promise<PauzeUsageRecordResult> {
+  async recordUsage(
+    uid: string,
+    completionId: string,
+  ): Promise<PauzeUsageRecordResult> {
     let usage: Awaited<ReturnType<PauzeUsageRepository["create"]>>;
 
     try {
-      usage = await this.pauzeUsageRepository.create(uid, randomUUID());
-    } catch {
-      throw new AppError({
-        code: PAUZE_USAGE_CODES.SAVE_FAILED,
-        message: PAUZE_USAGE_MESSAGES.SAVE_FAILED,
-        statusCode: 500,
-      });
+      usage = await this.pauzeUsageRepository.create(uid, completionId);
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        try {
+          const existing =
+            await this.pauzeUsageRepository.findByUserAndCompletionId(
+              uid,
+              completionId,
+            );
+          if (existing) {
+            usage = existing;
+          } else {
+            throw error;
+          }
+        } catch {
+          throw this.createSaveFailedError();
+        }
+      } else {
+        throw this.createSaveFailedError();
+      }
     }
 
     return {
@@ -37,6 +52,23 @@ export class PauzeUsageService {
       completionId: usage.completionId,
       completedAt: usage.completedAt.toISOString(),
     };
+  }
+
+  private isUniqueConstraintError(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    );
+  }
+
+  private createSaveFailedError(): AppError {
+    return new AppError({
+      code: PAUZE_USAGE_CODES.SAVE_FAILED,
+      message: PAUZE_USAGE_MESSAGES.SAVE_FAILED,
+      statusCode: 500,
+    });
   }
 
   async getStatistics(uid: string): Promise<PauzeUsageStatistics> {
@@ -111,15 +143,7 @@ export class PauzeUsageService {
       parts
         .filter(({ type }) => type === "year" || type === "month" || type === "day")
         .map(({ type, value }) => [type, Number(value)]),
-    ) as Partial<Record<"year" | "month" | "day", number>>;
-
-    if (
-      values.year === undefined ||
-      values.month === undefined ||
-      values.day === undefined
-    ) {
-      throw new Error("한국 시간 기준 날짜 변환에 실패했습니다.");
-    }
+    ) as Record<"year" | "month" | "day", number>;
 
     return Math.floor(
       Date.UTC(values.year, values.month - 1, values.day) / 86_400_000,
