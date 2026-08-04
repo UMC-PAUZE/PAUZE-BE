@@ -1,4 +1,5 @@
 import { AppError } from "../../../common/errors/app.error.js";
+import type { CurationCategoryName } from "../../../generated/prisma/client.js";
 import type {
   CreateCurationPostRequest,
   CreateCurationPostResult,
@@ -41,6 +42,17 @@ function isValidUrl(value: string): boolean {
   }
 }
 
+const CURATION_CATEGORY_NAME_LABELS: Record<CurationCategoryName, string> = {
+  RESEARCH: "연구",
+  CALMING_METHOD: "진정법",
+  DAILY_TIP: "일상팁",
+  ETC: "기타",
+};
+
+function getCategoryNameLabel(name: CurationCategoryName): string {
+  return CURATION_CATEGORY_NAME_LABELS[name];
+}
+
 export class CurationPostService {
   constructor(
     private readonly curationPostRepository: CurationPostRepository,
@@ -68,7 +80,7 @@ export class CurationPostService {
         return {
           postId: Number(post.postId),
           categoryId: Number(post.categoryId),
-          categoryName: post.category.name,
+          categoryName: getCategoryNameLabel(post.category.name),
           title: post.title,
           estimatedReadTime: post.estimatedReadTime,
           summary,
@@ -108,7 +120,7 @@ export class CurationPostService {
     return {
       postId: Number(post.postId),
       categoryId: Number(post.categoryId),
-      categoryName: post.category.name,
+      categoryName: getCategoryNameLabel(post.category.name),
       title: post.title,
       content: post.content,
       source: post.source,
@@ -284,7 +296,7 @@ export class CurationPostService {
           bookmarkId: Number(bookmark.bookmarkId),
           postId: Number(bookmark.postId),
           categoryId: Number(bookmark.post.categoryId),
-          categoryName: bookmark.post.category.name,
+          categoryName: getCategoryNameLabel(bookmark.post.category.name),
           title: bookmark.post.title,
           estimatedReadTime: bookmark.post.estimatedReadTime,
           summary,

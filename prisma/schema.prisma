@@ -22,10 +22,10 @@ enum TermName {
 }
 
 enum CurationCategoryName {
-  HSP_TIP   @map("HSP팁")
-  RESEARCH  @map("연구")
-  BREATHING @map("호흡법")
-  SOUND     @map("사운드")
+  RESEARCH       @map("연구")
+  CALMING_METHOD @map("진정법")
+  DAILY_TIP      @map("일상팁")
+  ETC            @map("기타")
 }
 
 model User {
