@@ -54,6 +54,14 @@ export class CurationPostBookmarkRepository {
                   name: true,
                 },
               },
+              likes: {
+                where: { uid },
+                select: { likesId: true },
+                take: 1,
+              },
+              _count: {
+                select: { likes: true },
+              },
             },
           },
         },

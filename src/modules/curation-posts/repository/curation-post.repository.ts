@@ -1,4 +1,5 @@
 import { prisma } from "../../../db.config.js";
+import type { CurationCategoryName } from "../../../generated/prisma/client.js";
 import type {
   CreateCurationPostRequest,
   CurationPostListQuery,
@@ -16,7 +17,7 @@ export type CurationPostListRow = {
   createdAt: Date;
   categoryId: bigint;
   category: {
-    name: string;
+    name: CurationCategoryName;
   };
   likes?: { likesId: bigint }[];
   bookmarks?: { bookmarkId: bigint }[];
