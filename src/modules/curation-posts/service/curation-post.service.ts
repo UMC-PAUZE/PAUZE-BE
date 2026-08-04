@@ -301,6 +301,8 @@ export class CurationPostService {
           estimatedReadTime: bookmark.post.estimatedReadTime,
           summary,
           thumbnailUrl: bookmark.post.thumbnailUrl,
+          likeCount: bookmark.post._count.likes,
+          isLiked: (bookmark.post.likes?.length ?? 0) > 0,
           createdAt: bookmark.createdAt.toISOString(),
         };
       }),

@@ -101,6 +101,8 @@ export interface MyBookmarkListItem {
   estimatedReadTime: number;
   summary: string;
   thumbnailUrl: string | null;
+  likeCount: number;
+  isLiked: boolean;
   createdAt: string;
 }
 

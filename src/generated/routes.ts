@@ -244,6 +244,8 @@ const models: TsoaRoute.Models = {
             "estimatedReadTime": {"dataType":"double","required":true},
             "summary": {"dataType":"string","required":true},
             "thumbnailUrl": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "likeCount": {"dataType":"double","required":true},
+            "isLiked": {"dataType":"boolean","required":true},
             "createdAt": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
