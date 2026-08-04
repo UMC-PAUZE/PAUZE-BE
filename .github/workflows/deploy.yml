@@ -1,0 +1,135 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+  APPLICATION_NAME: pauze-dev
+  ENVIRONMENT_NAME: Pauze-dev-env
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run tests
+        run: npm test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build Elastic Beanstalk option settings
+        id: eb_options
+        env:
+          APP_ENV: ${{ secrets.APP_ENV }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import re
+
+          raw = os.environ.get("APP_ENV") or ""
+          if not raw.strip():
+              raise SystemExit("Missing GitHub Actions secret: APP_ENV")
+
+          required = {
+              "DB_HOST",
+              "DB_PORT",
+              "DB_USER",
+              "DB_PASSWORD",
+              "DB_NAME",
+              "REDIS_HOST",
+              "REDIS_PORT",
+              "JWT_ACCESS_SECRET",
+              "JWT_REFRESH_SECRET",
+              "JWT_ACCESS_EXPIRES_IN",
+              "JWT_REFRESH_EXPIRES_IN",
+              "SMTP_HOST",
+              "SMTP_PORT",
+              "SMTP_USER",
+              "SMTP_PASS",
+              "SMTP_FROM",
+              "AWS_REGION",
+              "AWS_ACCESS_KEY_ID",
+              "AWS_SECRET_ACCESS_KEY",
+              "S3_BUCKET",
+              "S3_PUBLIC_BASE_URL",
+          }
+          # EB/nginx sets PORT; do not override from secret
+          skip = {"PORT"}
+
+          env_map = {}
+          for line in raw.splitlines():
+              line = line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              if line.startswith("export "):
+                  line = line[len("export ") :].strip()
+              if "=" not in line:
+                  continue
+              key, value = line.split("=", 1)
+              key = key.strip()
+              value = value.strip()
+              if value[:1] == value[-1:] and value[:1] in ("'", '"'):
+                  value = value[1:-1]
+              if key in skip:
+                  continue
+              env_map[key] = value
+
+          missing = sorted(required - set(env_map))
+          if missing:
+              raise SystemExit(
+                  "APP_ENV is missing required keys: " + ", ".join(missing)
+              )
+
+          options = [
+              {
+                  "Namespace": "aws:elasticbeanstalk:application:environment",
+                  "OptionName": key,
+                  "Value": value,
+              }
+              for key, value in sorted(env_map.items())
+              if re.fullmatch(r"[A-Z][A-Z0-9_]*", key)
+          ]
+
+          payload = json.dumps(options)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write("json<<EOF\n")
+              fh.write(payload)
+              fh.write("\nEOF\n")
+          PY
+
+      - name: Deploy to Elastic Beanstalk
+        uses: aws-actions/aws-elasticbeanstalk-deploy@v1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          application-name: ${{ env.APPLICATION_NAME }}
+          environment-name: ${{ env.ENVIRONMENT_NAME }}
+          version-label: ${{ github.sha }}
+          create-application-if-not-exists: false
+          create-environment-if-not-exists: false
+          exclude-patterns: node_modules,.git,.github,.env,.env.*,.tmp-aws,.idea,.cursor,.vscode,.DS_Store,*.md,.coderabbit.yaml
+          option-settings: ${{ steps.eb_options.outputs.json }}
