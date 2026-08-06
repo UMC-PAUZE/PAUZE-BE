@@ -493,6 +493,18 @@ export class CurationPostService {
         statusCode: 400,
       });
     }
+
+    if (
+      data.thumbnailKey !== undefined &&
+      data.thumbnailKey !== null &&
+      (typeof data.thumbnailKey !== "string" || !isValidS3Key(data.thumbnailKey))
+    ) {
+      throw new AppError({
+        code: CURATION_POST_CODES.BAD_REQUEST,
+        message: CURATION_POST_MESSAGES.INVALID_THUMBNAIL_KEY,
+        statusCode: 400,
+      });
+    }
   }
 }
 
