@@ -63,7 +63,7 @@ export interface CreateCurationPostRequest {
   title: string;
   content: string;
   source?: string | null;
-  thumbnailUrl?: string | null;
+  thumbnailKey?: string | null;
   isPublished?: boolean;
   estimatedReadTime: number;
 }
@@ -80,7 +80,7 @@ export interface UpdateCurationPostRequest {
   title?: string;
   content?: string;
   source?: string | null;
-  thumbnailUrl?: string | null;
+  thumbnailKey?: string | null;
   isPublished?: boolean;
   estimatedReadTime?: number;
 }

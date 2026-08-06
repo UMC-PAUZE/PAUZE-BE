@@ -36,6 +36,20 @@ export type CurationPostFindManyResult = {
   totalElements: number;
 };
 
+export type CreateCurationPostData = Omit<
+  CreateCurationPostRequest,
+  "thumbnailKey"
+> & {
+  thumbnailUrl?: string | null;
+};
+
+export type UpdateCurationPostData = Omit<
+  UpdateCurationPostRequest,
+  "thumbnailKey"
+> & {
+  thumbnailUrl?: string | null;
+};
+
 export class CurationPostRepository {
   constructor(private readonly db: typeof prisma) {}
 
@@ -151,7 +165,7 @@ export class CurationPostRepository {
     return { posts, totalElements };
   }
 
-  async create(data: CreateCurationPostRequest) {
+  async create(data: CreateCurationPostData) {
     try {
       return await this.db.curationPost.create({
         data: {
@@ -175,7 +189,7 @@ export class CurationPostRepository {
     }
   }
 
-  async update(postId: bigint, data: UpdateCurationPostRequest) {
+  async update(postId: bigint, data: UpdateCurationPostData) {
     return this.db.curationPost.update({
       where: { postId },
       data: {

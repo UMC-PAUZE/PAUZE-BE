@@ -1,4 +1,5 @@
 import { AppError } from "../../../common/errors/app.error.js";
+import { getObjectUrl } from "../../../common/utils/s3.util.js";
 import type { CurationCategoryName } from "../../../generated/prisma/client.js";
 import type {
   CreateCurationPostRequest,
@@ -33,13 +34,28 @@ const SUMMARY_LENGTH = 50;
 const MAX_TITLE_LENGTH = 255;
 const MAX_SOURCE_LENGTH = 255;
 
-function isValidUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
+const MAX_THUMBNAIL_KEY_LENGTH = 1024;
+
+function isValidS3Key(value: string): boolean {
+  const trimmed = value.trim();
+  return (
+    trimmed.length > 0 &&
+    trimmed.length <= MAX_THUMBNAIL_KEY_LENGTH &&
+    !trimmed.startsWith("/") &&
+    !/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+  );
+}
+
+function resolveThumbnailUrl(
+  thumbnailKey: string | null | undefined,
+): string | null | undefined {
+  if (thumbnailKey === undefined) {
+    return undefined;
   }
+  if (thumbnailKey === null) {
+    return null;
+  }
+  return getObjectUrl(thumbnailKey);
 }
 
 const CURATION_CATEGORY_NAME_LABELS: Record<CurationCategoryName, string> = {
@@ -145,7 +161,11 @@ export class CurationPostService {
     // 아래 create() 결과의 null 체크(P2002 매핑)가 담당합니다.
     await this.validateTitleNotDuplicated(BigInt(data.categoryId), data.title);
 
-    const post = await this.curationPostRepository.create(data);
+    const { thumbnailKey, ...rest } = data;
+    const post = await this.curationPostRepository.create({
+      ...rest,
+      thumbnailUrl: resolveThumbnailUrl(thumbnailKey),
+    });
     if (!post) {
       throw new AppError({
         code: CURATION_POST_CODES.CURATION_POST_TITLE_DUPLICATED,
@@ -173,7 +193,11 @@ export class CurationPostService {
       await this.validateCategoryExists(BigInt(data.categoryId));
     }
 
-    const post = await this.curationPostRepository.update(postId, data);
+    const { thumbnailKey, ...rest } = data;
+    const post = await this.curationPostRepository.update(postId, {
+      ...rest,
+      thumbnailUrl: resolveThumbnailUrl(thumbnailKey),
+    });
 
     return {
       postId: Number(post.postId),
@@ -415,13 +439,13 @@ export class CurationPostService {
     }
 
     if (
-      data.thumbnailUrl !== undefined &&
-      data.thumbnailUrl !== null &&
-      (typeof data.thumbnailUrl !== "string" || !isValidUrl(data.thumbnailUrl))
+      data.thumbnailKey !== undefined &&
+      data.thumbnailKey !== null &&
+      (typeof data.thumbnailKey !== "string" || !isValidS3Key(data.thumbnailKey))
     ) {
       throw new AppError({
         code: CURATION_POST_CODES.BAD_REQUEST,
-        message: CURATION_POST_MESSAGES.INVALID_THUMBNAIL_URL,
+        message: CURATION_POST_MESSAGES.INVALID_THUMBNAIL_KEY,
         statusCode: 400,
       });
     }
