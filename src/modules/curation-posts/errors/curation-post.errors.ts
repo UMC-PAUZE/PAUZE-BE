@@ -35,7 +35,6 @@ export const CURATION_POST_MESSAGES = {
   INVALID_CONTENT: "content는 공백이 아닌 문자열이어야 합니다.",
   INVALID_ESTIMATED_READ_TIME: "estimatedReadTime은 1 이상의 정수여야 합니다.",
   INVALID_SOURCE: "source는 공백이 아닌 문자열이어야 하며 255자를 초과할 수 없습니다.",
-  INVALID_THUMBNAIL_KEY: "thumbnailKey는 S3 객체 key 형식의 문자열이어야 합니다.",
   INVALID_IS_PUBLISHED: "isPublished는 boolean이어야 합니다.",
   EMPTY_UPDATE_REQUEST: "수정할 내용이 없습니다.",
   AUTH_UNAUTHORIZED: "토큰이 누락되었거나 유효하지 않습니다.",

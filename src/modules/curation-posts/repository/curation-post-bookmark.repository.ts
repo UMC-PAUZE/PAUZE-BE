@@ -48,7 +48,6 @@ export class CurationPostBookmarkRepository {
               title: true,
               content: true,
               estimatedReadTime: true,
-              thumbnailUrl: true,
               category: {
                 select: {
                   name: true,

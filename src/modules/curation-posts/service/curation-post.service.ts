@@ -1,5 +1,4 @@
 import { AppError } from "../../../common/errors/app.error.js";
-import { getObjectUrl } from "../../../common/utils/s3.util.js";
 import type { CurationCategoryName } from "../../../generated/prisma/client.js";
 import type {
   CreateCurationPostRequest,
@@ -33,30 +32,6 @@ import {
 const SUMMARY_LENGTH = 50;
 const MAX_TITLE_LENGTH = 255;
 const MAX_SOURCE_LENGTH = 255;
-
-const MAX_THUMBNAIL_KEY_LENGTH = 1024;
-
-function isValidS3Key(value: string): boolean {
-  const trimmed = value.trim();
-  return (
-    trimmed.length > 0 &&
-    trimmed.length <= MAX_THUMBNAIL_KEY_LENGTH &&
-    !trimmed.startsWith("/") &&
-    !/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
-  );
-}
-
-function resolveThumbnailUrl(
-  thumbnailKey: string | null | undefined,
-): string | null | undefined {
-  if (thumbnailKey === undefined) {
-    return undefined;
-  }
-  if (thumbnailKey === null) {
-    return null;
-  }
-  return getObjectUrl(thumbnailKey);
-}
 
 const CURATION_CATEGORY_NAME_LABELS: Record<CurationCategoryName, string> = {
   RESEARCH: "연구",
@@ -101,7 +76,6 @@ export class CurationPostService {
           estimatedReadTime: post.estimatedReadTime,
           summary,
           source: post.source,
-          thumbnailUrl: post.thumbnailUrl,
           viewCount: post.viewCount,
           likeCount: post._count.likes,
           isLiked: (post.likes?.length ?? 0) > 0,
@@ -140,7 +114,6 @@ export class CurationPostService {
       title: post.title,
       content: post.content,
       source: post.source,
-      thumbnailUrl: post.thumbnailUrl,
       viewCount: post.viewCount,
       likeCount: post._count.likes,
       estimatedReadTime: post.estimatedReadTime,
@@ -161,11 +134,7 @@ export class CurationPostService {
     // 아래 create() 결과의 null 체크(P2002 매핑)가 담당합니다.
     await this.validateTitleNotDuplicated(BigInt(data.categoryId), data.title);
 
-    const { thumbnailKey, ...rest } = data;
-    const post = await this.curationPostRepository.create({
-      ...rest,
-      thumbnailUrl: resolveThumbnailUrl(thumbnailKey),
-    });
+    const post = await this.curationPostRepository.create(data);
     if (!post) {
       throw new AppError({
         code: CURATION_POST_CODES.CURATION_POST_TITLE_DUPLICATED,
@@ -193,11 +162,7 @@ export class CurationPostService {
       await this.validateCategoryExists(BigInt(data.categoryId));
     }
 
-    const { thumbnailKey, ...rest } = data;
-    const post = await this.curationPostRepository.update(postId, {
-      ...rest,
-      thumbnailUrl: resolveThumbnailUrl(thumbnailKey),
-    });
+    const post = await this.curationPostRepository.update(postId, data);
 
     return {
       postId: Number(post.postId),
@@ -324,7 +289,6 @@ export class CurationPostService {
           title: bookmark.post.title,
           estimatedReadTime: bookmark.post.estimatedReadTime,
           summary,
-          thumbnailUrl: bookmark.post.thumbnailUrl,
           likeCount: bookmark.post._count.likes,
           isLiked: (bookmark.post.likes?.length ?? 0) > 0,
           createdAt: bookmark.createdAt.toISOString(),
@@ -439,18 +403,6 @@ export class CurationPostService {
     }
 
     if (
-      data.thumbnailKey !== undefined &&
-      data.thumbnailKey !== null &&
-      (typeof data.thumbnailKey !== "string" || !isValidS3Key(data.thumbnailKey))
-    ) {
-      throw new AppError({
-        code: CURATION_POST_CODES.BAD_REQUEST,
-        message: CURATION_POST_MESSAGES.INVALID_THUMBNAIL_KEY,
-        statusCode: 400,
-      });
-    }
-
-    if (
       data.isPublished !== undefined &&
       typeof data.isPublished !== "boolean"
     ) {
@@ -490,18 +442,6 @@ export class CurationPostService {
       throw new AppError({
         code: CURATION_POST_CODES.BAD_REQUEST,
         message: CURATION_POST_MESSAGES.BAD_REQUEST,
-        statusCode: 400,
-      });
-    }
-
-    if (
-      data.thumbnailKey !== undefined &&
-      data.thumbnailKey !== null &&
-      (typeof data.thumbnailKey !== "string" || !isValidS3Key(data.thumbnailKey))
-    ) {
-      throw new AppError({
-        code: CURATION_POST_CODES.BAD_REQUEST,
-        message: CURATION_POST_MESSAGES.INVALID_THUMBNAIL_KEY,
         statusCode: 400,
       });
     }

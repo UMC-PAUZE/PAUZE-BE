@@ -11,7 +11,6 @@ export type CurationPostListRow = {
   title: string;
   content: string;
   source: string | null;
-  thumbnailUrl: string | null;
   viewCount: number;
   estimatedReadTime: number;
   createdAt: Date;
@@ -34,20 +33,6 @@ export type CurationPostDetailRow = CurationPostListRow & {
 export type CurationPostFindManyResult = {
   posts: CurationPostListRow[];
   totalElements: number;
-};
-
-export type CreateCurationPostData = Omit<
-  CreateCurationPostRequest,
-  "thumbnailKey"
-> & {
-  thumbnailUrl?: string | null;
-};
-
-export type UpdateCurationPostData = Omit<
-  UpdateCurationPostRequest,
-  "thumbnailKey"
-> & {
-  thumbnailUrl?: string | null;
 };
 
 export class CurationPostRepository {
@@ -131,7 +116,6 @@ export class CurationPostRepository {
           title: true,
           content: true,
           source: true,
-          thumbnailUrl: true,
           viewCount: true,
           estimatedReadTime: true,
           createdAt: true,
@@ -165,14 +149,13 @@ export class CurationPostRepository {
     return { posts, totalElements };
   }
 
-  async create(data: CreateCurationPostData) {
+  async create(data: CreateCurationPostRequest) {
     try {
       return await this.db.curationPost.create({
         data: {
           title: data.title,
           content: data.content,
           source: data.source,
-          thumbnailUrl: data.thumbnailUrl,
           isPublished: data.isPublished ?? true,
           estimatedReadTime: data.estimatedReadTime,
           category: {
@@ -189,7 +172,7 @@ export class CurationPostRepository {
     }
   }
 
-  async update(postId: bigint, data: UpdateCurationPostData) {
+  async update(postId: bigint, data: UpdateCurationPostRequest) {
     return this.db.curationPost.update({
       where: { postId },
       data: {
@@ -203,9 +186,6 @@ export class CurationPostRepository {
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.content !== undefined ? { content: data.content } : {}),
         ...(data.source !== undefined ? { source: data.source } : {}),
-        ...(data.thumbnailUrl !== undefined
-          ? { thumbnailUrl: data.thumbnailUrl }
-          : {}),
         ...(data.isPublished !== undefined
           ? { isPublished: data.isPublished }
           : {}),
