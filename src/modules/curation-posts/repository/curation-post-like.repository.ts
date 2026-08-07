@@ -35,7 +35,7 @@ export class CurationPostLikeRepository {
     const [likes, totalElements] = await Promise.all([
       this.db.postLike.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { likesId: "desc" }],
         skip: (page - 1) * size,
         take: size,
         select: {
