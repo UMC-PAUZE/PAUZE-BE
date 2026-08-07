@@ -9,6 +9,7 @@ import type {
   CurationPostListQuery,
   CurationPostListResult,
   MyBookmarkListResult,
+  MyLikeListResult,
   UpdateCurationPostRequest,
   UpdateCurationPostResult,
 } from "../dto/curation-post.dto.js";
@@ -292,6 +293,41 @@ export class CurationPostService {
           likeCount: bookmark.post._count.likes,
           isLiked: (bookmark.post.likes?.length ?? 0) > 0,
           createdAt: bookmark.createdAt.toISOString(),
+        };
+      }),
+      page,
+      size,
+      totalElements,
+      totalPages: Math.ceil(totalElements / size),
+    };
+  }
+
+  async getMyLikes(
+    uid: string,
+    page: number,
+    size: number,
+  ): Promise<MyLikeListResult> {
+    const { likes, totalElements } =
+      await this.curationPostLikeRepository.findManyByUid(uid, page, size);
+
+    return {
+      content: likes.map((like) => {
+        const summary =
+          like.post.content.length > SUMMARY_LENGTH
+            ? `${like.post.content.slice(0, SUMMARY_LENGTH)}...`
+            : like.post.content;
+
+        return {
+          likesId: Number(like.likesId),
+          postId: Number(like.postId),
+          categoryId: Number(like.post.categoryId),
+          categoryName: getCategoryNameLabel(like.post.category.name),
+          title: like.post.title,
+          estimatedReadTime: like.post.estimatedReadTime,
+          summary,
+          likeCount: like.post._count.likes,
+          isBookmarked: (like.post.bookmarks?.length ?? 0) > 0,
+          createdAt: like.createdAt.toISOString(),
         };
       }),
       page,

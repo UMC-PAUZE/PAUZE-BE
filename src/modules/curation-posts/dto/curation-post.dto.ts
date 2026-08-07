@@ -108,3 +108,24 @@ export interface MyBookmarkListResult {
   totalElements: number;
   totalPages: number;
 }
+
+export interface MyLikeListItem {
+  likesId: number;
+  postId: number;
+  categoryId: number;
+  categoryName: string;
+  title: string;
+  estimatedReadTime: number;
+  summary: string;
+  likeCount: number;
+  isBookmarked: boolean;
+  createdAt: string;
+}
+
+export interface MyLikeListResult {
+  content: MyLikeListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}

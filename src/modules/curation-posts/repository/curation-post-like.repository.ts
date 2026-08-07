@@ -28,6 +28,48 @@ export class CurationPostLikeRepository {
       where: { postId, uid },
     });
   }
+
+  async findManyByUid(uid: string, page: number, size: number) {
+    const where = { uid, post: { isPublished: true } };
+
+    const [likes, totalElements] = await Promise.all([
+      this.db.postLike.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * size,
+        take: size,
+        select: {
+          likesId: true,
+          postId: true,
+          createdAt: true,
+          post: {
+            select: {
+              categoryId: true,
+              title: true,
+              content: true,
+              estimatedReadTime: true,
+              category: {
+                select: {
+                  name: true,
+                },
+              },
+              bookmarks: {
+                where: { uid },
+                select: { bookmarkId: true },
+                take: 1,
+              },
+              _count: {
+                select: { likes: true },
+              },
+            },
+          },
+        },
+      }),
+      this.db.postLike.count({ where }),
+    ]);
+
+    return { likes, totalElements };
+  }
 }
 
 export const curationPostLikeRepository = new CurationPostLikeRepository(prisma);
