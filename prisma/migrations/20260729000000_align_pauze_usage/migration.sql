@@ -1,3 +1,8 @@
+-- Backfill existing rows before enforcing the NOT NULL constraint.
+UPDATE `pauze_usage`
+SET `completionId` = UUID()
+WHERE `completionId` IS NULL;
+
 -- AlterTable
 ALTER TABLE `pauze_usage` MODIFY `usage_id` BIGINT NOT NULL AUTO_INCREMENT,
     MODIFY `completionId` CHAR(36) NOT NULL;
