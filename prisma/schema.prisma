@@ -170,7 +170,6 @@ model CurationPost {
   title             String           @db.VarChar(255)
   content           String           @db.Text
   source            String?          @db.VarChar(255)
-  thumbnailUrl      String?          @map("thumbnail_url") @db.Text
   viewCount         Int              @default(0) @map("view_count")
   isPublished       Boolean          @default(true) @map("is_published")
   createdAt         DateTime         @default(now()) @map("created_at")

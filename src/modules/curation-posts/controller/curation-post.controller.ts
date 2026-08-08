@@ -27,6 +27,7 @@ import type {
   CurationPostLikeResult,
   CurationPostListResult,
   MyBookmarkListResult,
+  MyLikeListResult,
   UpdateCurationPostRequest,
   UpdateCurationPostResult,
 } from "../dto/curation-post.dto.js";
@@ -300,6 +301,35 @@ export class MyCurationBookmarkController extends Controller {
     return success(
       CURATION_POST_CODES.GET_MY_BOOKMARKS_SUCCESS,
       CURATION_POST_MESSAGES.GET_MY_BOOKMARKS_SUCCESS,
+      result,
+    );
+  }
+}
+
+@Route("users/me/likes")
+@Tags("Curation Posts")
+export class MyCurationLikeController extends Controller {
+  @Get("/")
+  @Security("bearer")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  public async getMyLikes(
+    @Request() request: ExpressRequest,
+    @Query() page = 1,
+    @Query() size = 10,
+  ): Promise<ApiSuccessResponse<MyLikeListResult>> {
+    validatePageQuery(page, size);
+
+    const result = await curationPostService.getMyLikes(
+      getRequiredUid(request),
+      page,
+      size,
+    );
+
+    return success(
+      CURATION_POST_CODES.GET_MY_LIKES_SUCCESS,
+      CURATION_POST_MESSAGES.GET_MY_LIKES_SUCCESS,
       result,
     );
   }
