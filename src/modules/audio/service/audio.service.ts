@@ -3,8 +3,9 @@ import type {
   AudioCategoryCode,
   AudioGuideListItem,
   AudioLikeToggleResult,
-  AudioSaveResult,
+  AudioSaveToggleResult,
 } from "../dto/audio.dto.js";
+import { AudioCategoryCode as AudioCategoryCodeValue } from "../dto/audio.dto.js";
 import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
 import {
   type AudioGuideRepository,
@@ -28,23 +29,70 @@ export class AudioService {
   ) {}
 
   async getAudioGuides(userId?: string): Promise<AudioGuideListItem[]> {
-    const audioList = await this.audioGuideRepository.findMany(userId);
-    return audioList.map((audio) => this.toListItem(audio, userId));
+    try {
+      const audioList = await this.audioGuideRepository.findMany(userId);
+      return audioList.map((audio) => this.toListItem(audio));
+    } catch {
+      throw new AppError({
+        code: AUDIO_CODES.AUDIO_LIST_FAILED,
+        message: AUDIO_MESSAGES.AUDIO_LIST_FAILED,
+        statusCode: 500,
+      });
+    }
   }
 
   async getAudioGuidesByCategory(
     categoryCode: AudioCategoryCode,
     userId?: string,
   ): Promise<AudioGuideListItem[]> {
-    const audioList =
-      await this.audioGuideRepository.findManyByCategoryCode(
-        categoryCode,
-        userId,
-      );
-    return audioList.map((audio) => this.toListItem(audio, userId));
+    try {
+      const audioList =
+        await this.audioGuideRepository.findManyByCategoryCode(
+          categoryCode,
+          userId,
+        );
+      return audioList.map((audio) => this.toListItem(audio));
+    } catch {
+      throw new AppError({
+        code: AUDIO_CODES.AUDIO_LIST_FAILED,
+        message: AUDIO_MESSAGES.AUDIO_LIST_FAILED,
+        statusCode: 500,
+      });
+    }
   }
 
-  async saveAudioGuide(audioId: bigint, uid: string): Promise<AudioSaveResult> {
+  async getLikedAudioGuides(uid: string): Promise<AudioGuideListItem[]> {
+    try {
+      const audioList =
+        await this.audioGuideRepository.findManyLikedByUser(uid);
+      return audioList.map((audio) => this.toListItem(audio));
+    } catch {
+      throw new AppError({
+        code: AUDIO_CODES.LIKED_AUDIO_LIST_FAILED,
+        message: AUDIO_MESSAGES.LIKED_AUDIO_LIST_FAILED,
+        statusCode: 500,
+      });
+    }
+  }
+
+  async getSavedAudioGuides(uid: string): Promise<AudioGuideListItem[]> {
+    try {
+      const audioList =
+        await this.audioGuideRepository.findManySavedByUser(uid);
+      return audioList.map((audio) => this.toListItem(audio));
+    } catch {
+      throw new AppError({
+        code: AUDIO_CODES.SAVED_AUDIO_LIST_FAILED,
+        message: AUDIO_MESSAGES.SAVED_AUDIO_LIST_FAILED,
+        statusCode: 500,
+      });
+    }
+  }
+
+  async toggleAudioSave(
+    audioId: bigint,
+    uid: string,
+  ): Promise<AudioSaveToggleResult> {
     const audio = await this.audioGuideRepository.findById(audioId);
     if (!audio) {
       throw new AppError({
@@ -58,23 +106,29 @@ export class AudioService {
       audioId,
       uid,
     );
-    if (!existing) {
-      try {
-        await this.audioSaveRepository.create(audioId, uid);
-      } catch {
-        throw new AppError({
-          code: AUDIO_CODES.AUDIO_SAVE_FAILED,
-          message: AUDIO_MESSAGES.AUDIO_SAVE_FAILED,
-          statusCode: 500,
-        });
+    try {
+      if (existing) {
+        await this.audioSaveRepository.delete(existing.saveId);
+        return {
+          audioId: Number(audioId),
+          isSaved: false,
+          fileUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
+        };
       }
-    }
 
-    return {
-      audioId: Number(audioId),
-      isSaved: true,
-      audioUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
-    };
+      await this.audioSaveRepository.create(audioId, uid);
+      return {
+        audioId: Number(audioId),
+        isSaved: true,
+        fileUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
+      };
+    } catch {
+      throw new AppError({
+        code: AUDIO_CODES.AUDIO_SAVE_FAILED,
+        message: AUDIO_MESSAGES.AUDIO_SAVE_FAILED,
+        statusCode: 500,
+      });
+    }
   }
 
   async toggleAudioLike(
@@ -95,13 +149,21 @@ export class AudioService {
       uid,
     );
 
-    if (likeRecord) {
-      await this.audioLikeRepository.delete(likeRecord.likedId);
-      return { audioId: Number(audioId), isLiked: false };
-    }
+    try {
+      if (likeRecord) {
+        await this.audioLikeRepository.delete(likeRecord.likedId);
+        return { audioId: Number(audioId), isLiked: false };
+      }
 
-    await this.audioLikeRepository.create(audioId, uid);
-    return { audioId: Number(audioId), isLiked: true };
+      await this.audioLikeRepository.create(audioId, uid);
+      return { audioId: Number(audioId), isLiked: true };
+    } catch {
+      throw new AppError({
+        code: AUDIO_CODES.AUDIO_LIKE_FAILED,
+        message: AUDIO_MESSAGES.AUDIO_LIKE_FAILED,
+        statusCode: 500,
+      });
+    }
   }
 
   private toListItem(
@@ -109,27 +171,26 @@ export class AudioService {
       audioId: bigint;
       audioTitle: string;
       audioUrl: string;
+      audioKey: string;
       categoryId: bigint;
-      category: { categoryName: string };
+      category: {
+        categoryName: string;
+        audioCode: { codeName: string };
+      };
       likedBy?: { likedId: bigint }[];
+      savedBy?: { saveId: bigint }[];
     },
-    userId?: string,
   ): AudioGuideListItem {
-    const base = {
+    return {
       audioId: Number(audio.audioId),
       audioTitle: audio.audioTitle,
       categoryId: Number(audio.categoryId),
       categoryName: audio.category.categoryName,
-      fileUrl: audio.audioUrl,
-    };
-
-    if (!userId) {
-      return base;
-    }
-
-    return {
-      ...base,
+      categoryCode:
+        audio.category.audioCode.codeName as AudioCategoryCodeValue,
+      fileUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
       isLiked: (audio.likedBy?.length ?? 0) > 0,
+      isSaved: (audio.savedBy?.length ?? 0) > 0,
     };
   }
 }

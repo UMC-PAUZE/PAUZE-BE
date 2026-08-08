@@ -17,6 +17,12 @@ export class AudioSaveRepository {
       data: { audioId, uid },
     });
   }
+
+  async delete(saveId: bigint) {
+    return this.db.audioSave.delete({
+      where: { saveId },
+    });
+  }
 }
 
 export const audioSaveRepository = new AudioSaveRepository(prisma);

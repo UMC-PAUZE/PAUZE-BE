@@ -1,28 +1,27 @@
-export type AudioCategoryCode = "NATURE_SOUND" | "ASMR" | "NOISE";
+export enum AudioCategoryCode {
+  NATURE_SOUND = "NATURE_SOUND",
+  ASMR = "ASMR",
+  NOISE = "NOISE",
+}
 
-export interface AudioGuidePublicItem {
+export interface AudioGuideListItem {
   audioId: number;
   audioTitle: string;
   categoryId: number;
   categoryName: string;
+  categoryCode: AudioCategoryCode;
   fileUrl: string;
-}
-
-export interface AudioGuideAuthenticatedItem extends AudioGuidePublicItem {
   isLiked: boolean;
+  isSaved: boolean;
 }
-
-export type AudioGuideListItem =
-  | AudioGuidePublicItem
-  | AudioGuideAuthenticatedItem;
 
 export interface AudioLikeToggleResult {
   audioId: number;
   isLiked: boolean;
 }
 
-export interface AudioSaveResult {
+export interface AudioSaveToggleResult {
   audioId: number;
   isSaved: boolean;
-  audioUrl: string;
+  fileUrl: string;
 }

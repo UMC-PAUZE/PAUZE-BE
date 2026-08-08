@@ -6,11 +6,14 @@ export type AudioGuideListRow = {
   audioId: bigint;
   audioTitle: string;
   audioUrl: string;
+  audioKey: string;
   categoryId: bigint;
   category: {
     categoryName: string;
+    audioCode: { codeName: string };
   };
   likedBy?: { likedId: bigint }[];
+  savedBy?: { saveId: bigint }[];
 };
 
 export class AudioGuideRepository {
@@ -19,11 +22,22 @@ export class AudioGuideRepository {
   async findMany(userId?: string): Promise<AudioGuideListRow[]> {
     return this.db.audioGuide.findMany({
       include: {
-        category: true,
+        category: {
+          select: {
+            categoryName: true,
+            audioCode: { select: { codeName: true } },
+          },
+        },
         likedBy: userId
           ? {
               where: { uid: userId },
               select: { likedId: true },
+            }
+          : false,
+        savedBy: userId
+          ? {
+              where: { uid: userId },
+              select: { saveId: true },
             }
           : false,
       },
@@ -43,13 +57,60 @@ export class AudioGuideRepository {
         },
       },
       include: {
-        category: true,
+        category: {
+          select: {
+            categoryName: true,
+            audioCode: { select: { codeName: true } },
+          },
+        },
         likedBy: userId
           ? {
               where: { uid: userId },
               select: { likedId: true },
             }
           : false,
+        savedBy: userId
+          ? {
+              where: { uid: userId },
+              select: { saveId: true },
+            }
+          : false,
+      },
+    });
+  }
+
+  async findManyLikedByUser(uid: string): Promise<AudioGuideListRow[]> {
+    return this.findManyByUserRelation(uid, "liked");
+  }
+
+  async findManySavedByUser(uid: string): Promise<AudioGuideListRow[]> {
+    return this.findManyByUserRelation(uid, "saved");
+  }
+
+  private async findManyByUserRelation(
+    uid: string,
+    relation: "liked" | "saved",
+  ): Promise<AudioGuideListRow[]> {
+    return this.db.audioGuide.findMany({
+      where:
+        relation === "liked"
+          ? { likedBy: { some: { uid } } }
+          : { savedBy: { some: { uid } } },
+      include: {
+        category: {
+          select: {
+            categoryName: true,
+            audioCode: { select: { codeName: true } },
+          },
+        },
+        likedBy: {
+          where: { uid },
+          select: { likedId: true },
+        },
+        savedBy: {
+          where: { uid },
+          select: { saveId: true },
+        },
       },
     });
   }
