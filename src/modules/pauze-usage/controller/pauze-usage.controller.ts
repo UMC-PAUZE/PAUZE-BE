@@ -106,6 +106,12 @@ export class PauzeUsageController extends Controller {
     message: PAUZE_USAGE_MESSAGES.INVALID_COMPLETION_ID,
     result: null,
   })
+  @Response<ApiErrorResponse>(401, "Unauthorized", {
+    isSuccess: false,
+    code: AUTH_CODES.UNAUTHORIZED,
+    message: AUTH_MESSAGES.UNAUTHORIZED,
+    result: null,
+  })
   @Response<ApiErrorResponse>(500, "Internal Server Error", {
     isSuccess: false,
     code: PAUZE_USAGE_CODES.SAVE_FAILED,
