@@ -11,7 +11,6 @@ export type CurationPostListRow = {
   title: string;
   content: string;
   source: string | null;
-  thumbnailUrl: string | null;
   viewCount: number;
   estimatedReadTime: number;
   createdAt: Date;
@@ -117,7 +116,6 @@ export class CurationPostRepository {
           title: true,
           content: true,
           source: true,
-          thumbnailUrl: true,
           viewCount: true,
           estimatedReadTime: true,
           createdAt: true,
@@ -158,7 +156,6 @@ export class CurationPostRepository {
           title: data.title,
           content: data.content,
           source: data.source,
-          thumbnailUrl: data.thumbnailUrl,
           isPublished: data.isPublished ?? true,
           estimatedReadTime: data.estimatedReadTime,
           category: {
@@ -189,9 +186,6 @@ export class CurationPostRepository {
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.content !== undefined ? { content: data.content } : {}),
         ...(data.source !== undefined ? { source: data.source } : {}),
-        ...(data.thumbnailUrl !== undefined
-          ? { thumbnailUrl: data.thumbnailUrl }
-          : {}),
         ...(data.isPublished !== undefined
           ? { isPublished: data.isPublished }
           : {}),
