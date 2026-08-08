@@ -35,7 +35,7 @@ export class CurationPostBookmarkRepository {
     const [bookmarks, totalElements] = await Promise.all([
       this.db.postBookmark.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { bookmarkId: "desc" }],
         skip: (page - 1) * size,
         take: size,
         select: {
@@ -48,11 +48,18 @@ export class CurationPostBookmarkRepository {
               title: true,
               content: true,
               estimatedReadTime: true,
-              thumbnailUrl: true,
               category: {
                 select: {
                   name: true,
                 },
+              },
+              likes: {
+                where: { uid },
+                select: { likesId: true },
+                take: 1,
+              },
+              _count: {
+                select: { likes: true },
               },
             },
           },

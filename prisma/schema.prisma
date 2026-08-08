@@ -22,10 +22,10 @@ enum TermName {
 }
 
 enum CurationCategoryName {
-  HSP_TIP   @map("HSP팁")
-  RESEARCH  @map("연구")
-  BREATHING @map("호흡법")
-  SOUND     @map("사운드")
+  RESEARCH       @map("연구")
+  CALMING_METHOD @map("진정법")
+  DAILY_TIP      @map("일상팁")
+  ETC            @map("기타")
 }
 
 enum SleepLevel {
@@ -170,7 +170,6 @@ model CurationPost {
   title             String           @db.VarChar(255)
   content           String           @db.Text
   source            String?          @db.VarChar(255)
-  thumbnailUrl      String?          @map("thumbnail_url") @db.Text
   viewCount         Int              @default(0) @map("view_count")
   isPublished       Boolean          @default(true) @map("is_published")
   createdAt         DateTime         @default(now()) @map("created_at")
