@@ -3,6 +3,7 @@ import type {
   PauzeUsageRecordResult,
   PauzeUsageStatistics,
 } from "../dto/pauze-usage.dto.js";
+import { PauzeUsageStatisticsPeriod } from "../dto/pauze-usage.dto.js";
 import {
   PAUZE_USAGE_CODES,
   PAUZE_USAGE_MESSAGES,
@@ -76,10 +77,18 @@ export class PauzeUsageService {
     });
   }
 
-  async getStatistics(uid: string): Promise<PauzeUsageStatistics> {
+  async getStatistics(
+    uid: string,
+    period: PauzeUsageStatisticsPeriod = PauzeUsageStatisticsPeriod.ALL,
+  ): Promise<PauzeUsageStatistics> {
     try {
-      const [totalUsageCount, completedDates] = await Promise.all([
-        this.pauzeUsageRepository.countByUser(uid),
+      const since = this.getPeriodStart(period);
+      const [usageCount, completedDates] = await Promise.all([
+        this.pauzeUsageRepository.countByUser(
+          uid,
+          since ? { since } : undefined,
+        ),
+        // 현재 연속 일수는 주·월 경계를 넘어갈 수 있어 전체 이력을 조회합니다.
         this.pauzeUsageRepository.findCompletedDates(uid),
       ]);
       const usageDays = this.toUniqueUsageDays(
@@ -87,7 +96,8 @@ export class PauzeUsageService {
       );
 
       return {
-        totalUsageCount,
+        period,
+        usageCount,
         currentStreakDays: this.calculateCurrentStreak(usageDays),
       };
     } catch (error) {
@@ -98,6 +108,24 @@ export class PauzeUsageService {
         statusCode: 500,
       });
     }
+  }
+
+  private getPeriodStart(period: PauzeUsageStatisticsPeriod): Date | undefined {
+    if (period === PauzeUsageStatisticsPeriod.ALL) {
+      return undefined;
+    }
+
+    const koreaTime = new Date(this.now().getTime() + 9 * 60 * 60 * 1000);
+    const year = koreaTime.getUTCFullYear();
+    const month = koreaTime.getUTCMonth();
+    const date = koreaTime.getUTCDate();
+
+    if (period === PauzeUsageStatisticsPeriod.MONTH) {
+      return new Date(Date.UTC(year, month, 1, -9));
+    }
+
+    const daysSinceMonday = (koreaTime.getUTCDay() + 6) % 7;
+    return new Date(Date.UTC(year, month, date - daysSinceMonday, -9));
   }
 
   private toUniqueUsageDays(completedDates: Date[]): number[] {

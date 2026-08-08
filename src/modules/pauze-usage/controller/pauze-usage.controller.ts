@@ -5,6 +5,7 @@ import {
   Example,
   Get,
   Post,
+  Query,
   Request,
   Response,
   Route,
@@ -27,6 +28,7 @@ import type {
   PauzeUsageRecordResult,
   PauzeUsageStatistics,
 } from "../dto/pauze-usage.dto.js";
+import { PauzeUsageStatisticsPeriod } from "../dto/pauze-usage.dto.js";
 import {
   PAUZE_USAGE_CODES,
   PAUZE_USAGE_MESSAGES,
@@ -50,7 +52,8 @@ export class PauzeUsageController extends Controller {
     code: "COMMON_200",
     message: "사용 통계 조회에 성공했습니다.",
     result: {
-      totalUsageCount: 10,
+      period: PauzeUsageStatisticsPeriod.WEEK,
+      usageCount: 10,
       currentStreakDays: 3,
     },
   })
@@ -69,6 +72,7 @@ export class PauzeUsageController extends Controller {
   })
   public async getStatistics(
     @Request() request: ExpressRequest,
+    @Query() period: PauzeUsageStatisticsPeriod = PauzeUsageStatisticsPeriod.ALL,
   ): Promise<ApiSuccessResponse<PauzeUsageStatistics>> {
     const uid = request.user?.uid;
     if (!uid) {
@@ -79,7 +83,7 @@ export class PauzeUsageController extends Controller {
       });
     }
 
-    const result = await pauzeUsageService.getStatistics(uid);
+    const result = await pauzeUsageService.getStatistics(uid, period);
     return success(
       PAUZE_USAGE_CODES.STATISTICS_GET_SUCCESS,
       PAUZE_USAGE_MESSAGES.STATISTICS_GET_SUCCESS,

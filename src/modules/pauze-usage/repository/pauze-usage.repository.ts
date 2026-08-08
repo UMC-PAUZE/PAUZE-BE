@@ -36,21 +36,21 @@ export class PauzeUsageRepository {
     });
   }
 
-  async countByUser(uid: string): Promise<number> {
-    return this.db.pauzeUsage.count({
-      where: { uid },
-    });
-  }
-
-  async findCompletedDates(
+  async countByUser(
     uid: string,
     options?: { since?: Date },
-  ): Promise<{ completedAt: Date }[]> {
-    return this.db.pauzeUsage.findMany({
+  ): Promise<number> {
+    return this.db.pauzeUsage.count({
       where: {
         uid,
         ...(options?.since ? { completedAt: { gte: options.since } } : {}),
       },
+    });
+  }
+
+  async findCompletedDates(uid: string): Promise<{ completedAt: Date }[]> {
+    return this.db.pauzeUsage.findMany({
+      where: { uid },
       select: {
         completedAt: true,
       },

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AppError } from "../../../common/errors/app.error.js";
+import { PauzeUsageStatisticsPeriod } from "../dto/pauze-usage.dto.js";
 import type { PauzeUsageRepository } from "../repository/pauze-usage.repository.js";
 import { PauzeUsageService } from "./pauze-usage.service.js";
 
@@ -52,7 +53,7 @@ test("같은 completionId 재요청은 기존 기록을 반환", async () => {
   });
 });
 
-test("저장 실패를 AGGREGATION_SAVE_FAILED_500 오류로 변환", async () => {
+test("저장 실패를 PAUZE_USAGE_SAVE_FAILED_500 오류로 변환", async () => {
   const repository = {
     async create() {
       throw new Error("database error");
@@ -63,7 +64,7 @@ test("저장 실패를 AGGREGATION_SAVE_FAILED_500 오류로 변환", async () =
   await assert.rejects(service.recordUsage("user-uid", "550e8400-e29b-41d4-a716-446655440000"), (error: unknown) => {
     assert.ok(error instanceof AppError);
     assert.equal(error.statusCode, 500);
-    assert.equal(error.code, "AGGREGATION_SAVE_FAILED_500");
+    assert.equal(error.code, "PAUZE_USAGE_SAVE_FAILED_500");
     assert.equal(error.message, "누적 집계를 실패하였습니다.");
     return true;
   });
@@ -114,7 +115,8 @@ test("누적 횟수와 현재 연속 사용 일수 계산", async () => {
   const result = await service.getStatistics("user-uid");
 
   assert.deepEqual(result, {
-    totalUsageCount: 6,
+    period: "ALL",
+    usageCount: 6,
     currentStreakDays: 2,
   });
 });
@@ -139,7 +141,8 @@ test("같은 한국 날짜의 여러 사용 기록을 연속 일수 1일로 계�
   const result = await service.getStatistics("user-uid");
 
   assert.deepEqual(result, {
-    totalUsageCount: 2,
+    period: "ALL",
+    usageCount: 2,
     currentStreakDays: 1,
   });
 });
@@ -165,7 +168,8 @@ test("마지막 사용일이 어제보다 이전이면 현재 연속 일수를 0
   const result = await service.getStatistics("user-uid");
 
   assert.deepEqual(result, {
-    totalUsageCount: 3,
+    period: "ALL",
+    usageCount: 3,
     currentStreakDays: 0,
   });
 });
@@ -184,12 +188,69 @@ test("사용 기록이 없으면 모든 통계를 0으로 반환", async () => {
   const result = await service.getStatistics("user-uid");
 
   assert.deepEqual(result, {
-    totalUsageCount: 0,
+    period: "ALL",
+    usageCount: 0,
     currentStreakDays: 0,
   });
 });
 
-test("통계 조회 실패를 AGGREGATION_GET_FAILED_500 오류로 변환", async () => {
+test("주간 통계는 KST 기준 이번 주 월요일부터 집계한다", async () => {
+  const repository = {
+    async countByUser(uid: string, options?: { since?: Date }) {
+      assert.equal(uid, "user-uid");
+      assert.equal(options?.since?.toISOString(), "2026-08-02T15:00:00.000Z");
+      return 4;
+    },
+    async findCompletedDates() {
+      return [];
+    },
+  } as unknown as PauzeUsageRepository;
+  const service = new PauzeUsageService(
+    repository,
+    () => new Date("2026-08-08T03:00:00.000Z"),
+  );
+
+  const result = await service.getStatistics(
+    "user-uid",
+    PauzeUsageStatisticsPeriod.WEEK,
+  );
+
+  assert.deepEqual(result, {
+    period: "WEEK",
+    usageCount: 4,
+    currentStreakDays: 0,
+  });
+});
+
+test("월간 통계는 KST 기준 이번 달 1일부터 집계한다", async () => {
+  const repository = {
+    async countByUser(uid: string, options?: { since?: Date }) {
+      assert.equal(uid, "user-uid");
+      assert.equal(options?.since?.toISOString(), "2026-07-31T15:00:00.000Z");
+      return 7;
+    },
+    async findCompletedDates() {
+      return [];
+    },
+  } as unknown as PauzeUsageRepository;
+  const service = new PauzeUsageService(
+    repository,
+    () => new Date("2026-08-08T03:00:00.000Z"),
+  );
+
+  const result = await service.getStatistics(
+    "user-uid",
+    PauzeUsageStatisticsPeriod.MONTH,
+  );
+
+  assert.deepEqual(result, {
+    period: "MONTH",
+    usageCount: 7,
+    currentStreakDays: 0,
+  });
+});
+
+test("통계 조회 실패를 PAUZE_USAGE_STATISTICS_GET_FAILED_500 오류로 변환", async () => {
   const repository = {
     async countByUser() {
       throw new Error("database error");
@@ -203,7 +264,7 @@ test("통계 조회 실패를 AGGREGATION_GET_FAILED_500 오류로 변환", asyn
   await assert.rejects(service.getStatistics("user-uid"), (error: unknown) => {
     assert.ok(error instanceof AppError);
     assert.equal(error.statusCode, 500);
-    assert.equal(error.code, "AGGREGATION_GET_FAILED_500");
+    assert.equal(error.code, "PAUZE_USAGE_STATISTICS_GET_FAILED_500");
     assert.equal(error.message, "사용 통계 조회를 실패하였습니다.");
     return true;
   });

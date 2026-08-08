@@ -10,8 +10,16 @@ export interface PauzeUsageRecordResult {
   completedAt: string;
 }
 
+export enum PauzeUsageStatisticsPeriod {
+  ALL = "ALL",
+  WEEK = "WEEK",
+  MONTH = "MONTH",
+}
+
 export interface PauzeUsageStatistics {
-  totalUsageCount: number;
+  period: PauzeUsageStatisticsPeriod;
+  /** 선택한 기간에 완료한 PAUZE 사용 횟수 */
+  usageCount: number;
   /** Asia/Seoul 날짜 기준 현재 연속 PAUZE 사용 일수 */
   currentStreakDays: number;
 }
