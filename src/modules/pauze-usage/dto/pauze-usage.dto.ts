@@ -6,10 +6,12 @@ export interface PauzeUsageRecordRequest {
 export interface PauzeUsageRecordResult {
   usageId: string;
   completionId: string;
+  /** UTC 기준 ISO 8601 완료 시각 (예: 2026-08-02T03:30:00.000Z) */
   completedAt: string;
 }
 
 export interface PauzeUsageStatistics {
   totalUsageCount: number;
+  /** Asia/Seoul 날짜 기준 현재 연속 PAUZE 사용 일수 */
   currentStreakDays: number;
 }

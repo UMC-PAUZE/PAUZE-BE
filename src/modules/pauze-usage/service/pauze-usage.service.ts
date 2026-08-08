@@ -40,7 +40,6 @@ export class PauzeUsageService {
             throw error;
           }
         } catch (fallbackError) {
-          // eslint-disable-next-line no-console
           console.error(
             "[PauzeUsageService] save fallback failed",
             fallbackError,
@@ -92,7 +91,6 @@ export class PauzeUsageService {
         currentStreakDays: this.calculateCurrentStreak(usageDays),
       };
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error("[PauzeUsageService] statistics query failed", error);
       throw new AppError({
         code: PAUZE_USAGE_CODES.STATISTICS_GET_FAILED,

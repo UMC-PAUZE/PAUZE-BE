@@ -9,6 +9,8 @@ export class PauzeUsageRepository {
       data: {
         uid,
         completionId,
+        // Date는 절대 시점을 나타내며 API 응답에서는 UTC ISO 문자열로 변환합니다.
+        completedAt: new Date(),
       },
       select: {
         usageId: true,

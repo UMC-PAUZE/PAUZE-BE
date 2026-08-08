@@ -18,6 +18,10 @@ import type {
   ApiErrorResponse,
   ApiSuccessResponse,
 } from "../../../common/responses/response.js";
+import {
+  AUTH_CODES,
+  AUTH_MESSAGES,
+} from "../../auth/errors/auth.errors.js";
 import type {
   PauzeUsageRecordRequest,
   PauzeUsageRecordResult,
@@ -53,8 +57,8 @@ export class PauzeUsageController extends Controller {
   @SuccessResponse(200, "OK")
   @Response<ApiErrorResponse>(401, "Unauthorized", {
     isSuccess: false,
-    code: PAUZE_USAGE_CODES.AUTH_UNAUTHORIZED,
-    message: PAUZE_USAGE_MESSAGES.AUTH_UNAUTHORIZED,
+    code: AUTH_CODES.UNAUTHORIZED,
+    message: AUTH_MESSAGES.UNAUTHORIZED,
     result: null,
   })
   @Response<ApiErrorResponse>(500, "Internal Server Error", {
@@ -69,8 +73,8 @@ export class PauzeUsageController extends Controller {
     const uid = request.user?.uid;
     if (!uid) {
       throw new AppError({
-        code: PAUZE_USAGE_CODES.AUTH_UNAUTHORIZED,
-        message: PAUZE_USAGE_MESSAGES.AUTH_UNAUTHORIZED,
+        code: AUTH_CODES.UNAUTHORIZED,
+        message: AUTH_MESSAGES.UNAUTHORIZED,
         statusCode: 401,
       });
     }
@@ -102,12 +106,6 @@ export class PauzeUsageController extends Controller {
     message: PAUZE_USAGE_MESSAGES.INVALID_COMPLETION_ID,
     result: null,
   })
-  @Response<ApiErrorResponse>(401, "Unauthorized", {
-    isSuccess: false,
-    code: PAUZE_USAGE_CODES.AUTH_UNAUTHORIZED,
-    message: PAUZE_USAGE_MESSAGES.AUTH_UNAUTHORIZED,
-    result: null,
-  })
   @Response<ApiErrorResponse>(500, "Internal Server Error", {
     isSuccess: false,
     code: PAUZE_USAGE_CODES.SAVE_FAILED,
@@ -121,8 +119,8 @@ export class PauzeUsageController extends Controller {
     const uid = request.user?.uid;
     if (!uid) {
       throw new AppError({
-        code: PAUZE_USAGE_CODES.AUTH_UNAUTHORIZED,
-        message: PAUZE_USAGE_MESSAGES.AUTH_UNAUTHORIZED,
+        code: AUTH_CODES.UNAUTHORIZED,
+        message: AUTH_MESSAGES.UNAUTHORIZED,
         statusCode: 401,
       });
     }
