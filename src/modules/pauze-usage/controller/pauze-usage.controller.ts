@@ -50,7 +50,7 @@ export class PauzeUsageController extends Controller {
   @Example<ApiSuccessResponse<PauzeUsageStatistics>>({
     isSuccess: true,
     code: PAUZE_USAGE_CODES.STATISTICS_GET_SUCCESS,
-    message: "사용 통계 조회에 성공했습니다.",
+    message: PAUZE_USAGE_MESSAGES.STATISTICS_GET_SUCCESS,
     result: {
       period: PauzeUsageStatisticsPeriod.WEEK,
       usageCount: 10,
@@ -96,7 +96,7 @@ export class PauzeUsageController extends Controller {
   @Example<ApiSuccessResponse<PauzeUsageRecordResult>>({
     isSuccess: true,
     code: PAUZE_USAGE_CODES.RECORD_SUCCESS,
-    message: "요청에 성공했습니다.",
+    message: PAUZE_USAGE_MESSAGES.RECORD_SUCCESS,
     result: {
       usageId: "15",
       completionId: "550e8400-e29b-41d4-a716-446655440000",
