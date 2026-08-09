@@ -1,5 +1,6 @@
 import { prisma } from "../../../db.config.js";
-import type { PrismaClient } from "../../../generated/prisma/client.js";
+import { Prisma, type PrismaClient } from "../../../generated/prisma/client.js";
+
 
 const MAX_TOGGLE_ATTEMPTS = 3;
 
@@ -39,10 +40,7 @@ export class AudioLikeRepository {
 
   private isRetryableConflict(error: unknown): boolean {
     return (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      typeof error.code === "string" &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
       ["P2002", "P2025", "P2034"].includes(error.code)
     );
   }
