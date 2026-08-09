@@ -93,36 +93,25 @@ export class AudioService {
     audioId: bigint,
     uid: string,
   ): Promise<AudioSaveToggleResult> {
-    const audio = await this.audioGuideRepository.findById(audioId);
-    if (!audio) {
-      throw new AppError({
-        code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
-        message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
-        statusCode: 404,
-      });
-    }
-
-    const existing = await this.audioSaveRepository.findByAudioIdAndUid(
-      audioId,
-      uid,
-    );
     try {
-      if (existing) {
-        await this.audioSaveRepository.delete(existing.saveId);
-        return {
-          audioId: Number(audioId),
-          isSaved: false,
-          fileUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
-        };
+      const audio = await this.audioGuideRepository.findById(audioId);
+      if (!audio) {
+        throw new AppError({
+          code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
+          message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
+          statusCode: 404,
+        });
       }
 
-      await this.audioSaveRepository.create(audioId, uid);
+      const isSaved = await this.audioSaveRepository.toggle(audioId, uid);
       return {
         audioId: Number(audioId),
-        isSaved: true,
+        isSaved,
         fileUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
       };
-    } catch {
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+
       throw new AppError({
         code: AUDIO_CODES.AUDIO_SAVE_FAILED,
         message: AUDIO_MESSAGES.AUDIO_SAVE_FAILED,
@@ -135,29 +124,21 @@ export class AudioService {
     audioId: bigint,
     uid: string,
   ): Promise<AudioLikeToggleResult> {
-    const audio = await this.audioGuideRepository.findById(audioId);
-    if (!audio) {
-      throw new AppError({
-        code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
-        message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
-        statusCode: 404,
-      });
-    }
-
-    const likeRecord = await this.audioLikeRepository.findByAudioIdAndUid(
-      audioId,
-      uid,
-    );
-
     try {
-      if (likeRecord) {
-        await this.audioLikeRepository.delete(likeRecord.likedId);
-        return { audioId: Number(audioId), isLiked: false };
+      const audio = await this.audioGuideRepository.findById(audioId);
+      if (!audio) {
+        throw new AppError({
+          code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
+          message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
+          statusCode: 404,
+        });
       }
 
-      await this.audioLikeRepository.create(audioId, uid);
-      return { audioId: Number(audioId), isLiked: true };
-    } catch {
+      const isLiked = await this.audioLikeRepository.toggle(audioId, uid);
+      return { audioId: Number(audioId), isLiked };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+
       throw new AppError({
         code: AUDIO_CODES.AUDIO_LIKE_FAILED,
         message: AUDIO_MESSAGES.AUDIO_LIKE_FAILED,
