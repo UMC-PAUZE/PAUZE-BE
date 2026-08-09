@@ -29,8 +29,26 @@ export class CurationPostLikeRepository {
     });
   }
 
-  async findManyByUid(uid: string, page: number, size: number) {
-    const where = { uid, post: { isPublished: true } };
+  async findManyByUid(
+    uid: string,
+    page: number,
+    size: number,
+    keyword?: string,
+  ) {
+    const where = {
+      uid,
+      post: {
+        isPublished: true,
+        ...(keyword
+          ? {
+              OR: [
+                { title: { contains: keyword } },
+                { content: { contains: keyword } },
+              ],
+            }
+          : {}),
+      },
+    };
 
     const [likes, totalElements] = await Promise.all([
       this.db.postLike.findMany({

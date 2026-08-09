@@ -287,6 +287,7 @@ export class MyCurationBookmarkController extends Controller {
   @Response(401, "Unauthorized")
   public async getMyBookmarks(
     @Request() request: ExpressRequest,
+    @Query() keyword?: string,
     @Query() page = 1,
     @Query() size = 10,
   ): Promise<ApiSuccessResponse<MyBookmarkListResult>> {
@@ -296,6 +297,7 @@ export class MyCurationBookmarkController extends Controller {
       getRequiredUid(request),
       page,
       size,
+      keyword,
     );
 
     return success(
@@ -316,6 +318,7 @@ export class MyCurationLikeController extends Controller {
   @Response(401, "Unauthorized")
   public async getMyLikes(
     @Request() request: ExpressRequest,
+    @Query() keyword?: string,
     @Query() page = 1,
     @Query() size = 10,
   ): Promise<ApiSuccessResponse<MyLikeListResult>> {
@@ -325,6 +328,7 @@ export class MyCurationLikeController extends Controller {
       getRequiredUid(request),
       page,
       size,
+      keyword,
     );
 
     return success(
