@@ -20,6 +20,10 @@ import { parseVisualKey } from "../utils/visual-key.util.js";
 @Route("visual-guides")
 @Tags("Visual Guides")
 export class VisualController extends Controller {
+    /**
+     * 시각 안정 가이드 키에 해당하는 파일 URL을 조회합니다.
+     * key는 시각 가이드를 구분하는 고유 식별자이며, 응답 URL은 프론트에서 파일 재생 또는 다운로드에 사용합니다.
+     */
     @Get("file")
     @SuccessResponse(200,"OK")
     @Response<ApiErrorResponse>(400, "Bad Request", {
@@ -34,7 +38,10 @@ export class VisualController extends Controller {
         message: VISUAL_MESSAGES.VISUAL_GUIDE_NOT_FOUND,
         result: null,
     })
-    public async getGuideByKey(@Query() key: string,): Promise<ApiSuccessResponse<VisualGuideFileResponse>> {
+    public async getGuideByKey(
+        /** 조회할 시각 안정 가이드의 고유 키입니다. */
+        @Query() key: string,
+    ): Promise<ApiSuccessResponse<VisualGuideFileResponse>> {
         const result = await visualGuideService.getVisualGuideByKey(parseVisualKey(key));
         return success(
             VISUAL_CODES.GET_VISUAL_GUIDE_FILE_SUCCESS,

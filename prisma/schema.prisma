@@ -109,7 +109,6 @@ model User {
   postBookmarks         PostBookmark[]
   searchHistories       SearchHistory[]
   audioLikes            AudioLiked[]
-  audioSaves            AudioSave[]
   conditions            Condition[]
   pauzeUsages           PauzeUsage[]
   sensitivityReports    SensitivityReport[]
@@ -232,7 +231,7 @@ model AudioCategory {
   
   // 외래키로 변경
   codeId       Int       @map("code_id")
-  audioCode    AudioCode @relation(fields: [codeId], references: [id])
+  audioCode    AudioCode @relation(fields: [codeId], references: [codeId])
   
   createdAt    DateTime  @map("created_at")
   updatedAt    DateTime? @map("updated_at")
@@ -242,7 +241,7 @@ model AudioCategory {
 }
 
 model AudioCode {
-  id        Int             @id @default(autoincrement())
+  codeId    Int             @id @default(autoincrement()) @map("code_id")
   codeName  String          @unique @db.VarChar(50) @map("code_name") // NATURE_SOUND 등 들어옴
   categories AudioCategory[]
 
@@ -260,7 +259,6 @@ model AudioGuide {
 
   category   AudioCategory @relation(fields: [categoryId], references: [categoryId])
   likedBy    AudioLiked[]
-  savedBy    AudioSave[]
 
   @@map("audio_guide")
 }
@@ -278,18 +276,6 @@ model AudioLiked {
   @@map("audio_liked")
 }
 
-model AudioSave {
-  saveId    BigInt     @id @default(autoincrement()) @map("save_id")
-  audioId   BigInt     @map("audio_id")
-  uid       String     @db.Char(36)
-  createdAt DateTime   @default(now()) @map("created_at")
-
-  audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
-  user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
-
-  @@unique([audioId, uid])
-  @@map("audio_save")
-}
 model Condition {
   conditionId BigInt @id @default(autoincrement()) @map("condition_id")
   uid         String @db.Char(36)
@@ -400,8 +386,8 @@ model ReportInsight {
 //즉각 진정하기 - 시각 안정
 model VisualGuide {
   visualId      BigInt    @id @default(autoincrement()) @map("visual_id")
-  visualTitle   String    @map("visual_title")
-  visualContent String    @db.Text @map("visual_content")
+  visualTitle   String    @db.VarChar(50) @map("visual_title")
+  content       String?   @db.VarChar(100)
   visualUrl     String    @db.Text @map("visual_url")
   visualKey     String    @unique @db.VarChar(255) @map("visual_key")
   createdAt     DateTime  @map("created_at")
