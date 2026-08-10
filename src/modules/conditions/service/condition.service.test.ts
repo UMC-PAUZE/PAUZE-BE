@@ -7,8 +7,10 @@ import {
   calculateSensitivityLevel,
   createTodayCondition,
   getKstTodayDate,
+  getTodayCondition,
   isUniqueConstraintError,
   mapConditionCreateError,
+  mapConditionFetchError,
 } from "./condition.service.js";
 
 const validCondition = {
@@ -155,5 +157,60 @@ test("counts 13 and 20 point answers as triggers but not 0 and 7", () => {
       energyLevel: "ENOUGH",
     }).triggerCodes,
     ["VISUAL_OVERLOAD", "SOCIAL_FATIGUE"],
+  );
+});
+
+test("getTodayCondition returns the latest condition", async () => {
+  const result = await getTodayCondition("user-id", {
+    findLatestConditionByUserId: async () => ({
+      conditionId: 12n,
+      conditionDate: new Date("2026-08-09T00:00:00.000Z"),
+      sleepLevel: "FOUR_TO_SIX",
+      noiseLevel: "NORMAL",
+      visualLevel: "HIGH",
+      socialLevel: "LITTLE",
+      energyLevel: "LOW",
+      sensitivityScore: 59,
+      sensitivityLevel: "NORMAL",
+      conditionTriggers: [
+        { trigger: { code: "SLEEP_DEPRIVATION" } },
+        { trigger: { code: "VISUAL_OVERLOAD" } },
+      ],
+    }),
+  });
+
+  assert.deepEqual(result, {
+    conditionId: 12,
+    conditionDate: "2026-08-09",
+    sleepLevel: "FOUR_TO_SIX",
+    noiseLevel: "NORMAL",
+    visualLevel: "HIGH",
+    socialLevel: "LITTLE",
+    energyLevel: "LOW",
+    sensitivityScore: 59,
+    sensitivityLevel: "NORMAL",
+    triggerCodes: ["SLEEP_DEPRIVATION", "VISUAL_OVERLOAD"],
+  });
+});
+
+test("getTodayCondition returns 404 when no condition exists", async () => {
+  await assert.rejects(
+    getTodayCondition("user-id", {
+      findLatestConditionByUserId: async () => null,
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
+      error.code === "CONDITION_NOT_FOUND_404",
+  );
+});
+
+test("mapConditionFetchError maps database and unexpected errors", () => {
+  assert.equal(mapConditionFetchError({ code: "P1001" }).statusCode, 503);
+  assert.equal(mapConditionFetchError({ code: "ETIMEDOUT" }).statusCode, 504);
+  assert.equal(mapConditionFetchError(new Error("unknown")).statusCode, 500);
+  assert.equal(
+    mapConditionFetchError(new Error("unknown")).code,
+    "CONDITION_FETCH_FAILED_500",
   );
 });

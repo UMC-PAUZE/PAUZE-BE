@@ -14,7 +14,6 @@ export interface CurationPostListItem {
   estimatedReadTime: number;
   summary: string;
   source: string | null;
-  thumbnailUrl: string | null;
   viewCount: number;
   likeCount: number;
   isLiked: boolean;
@@ -29,7 +28,6 @@ export interface CurationPostDetailResult {
   title: string;
   content: string;
   source: string | null;
-  thumbnailUrl: string | null;
   viewCount: number;
   likeCount: number;
   estimatedReadTime: number;
@@ -63,7 +61,6 @@ export interface CreateCurationPostRequest {
   title: string;
   content: string;
   source?: string | null;
-  thumbnailUrl?: string | null;
   isPublished?: boolean;
   estimatedReadTime: number;
 }
@@ -80,7 +77,6 @@ export interface UpdateCurationPostRequest {
   title?: string;
   content?: string;
   source?: string | null;
-  thumbnailUrl?: string | null;
   isPublished?: boolean;
   estimatedReadTime?: number;
 }
@@ -100,12 +96,34 @@ export interface MyBookmarkListItem {
   title: string;
   estimatedReadTime: number;
   summary: string;
-  thumbnailUrl: string | null;
+  likeCount: number;
+  isLiked: boolean;
   createdAt: string;
 }
 
 export interface MyBookmarkListResult {
   content: MyBookmarkListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface MyLikeListItem {
+  likesId: number;
+  postId: number;
+  categoryId: number;
+  categoryName: string;
+  title: string;
+  estimatedReadTime: number;
+  summary: string;
+  likeCount: number;
+  isBookmarked: boolean;
+  createdAt: string;
+}
+
+export interface MyLikeListResult {
+  content: MyLikeListItem[];
   page: number;
   size: number;
   totalElements: number;

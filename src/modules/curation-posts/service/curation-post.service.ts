@@ -1,4 +1,5 @@
 import { AppError } from "../../../common/errors/app.error.js";
+import type { CurationCategoryName } from "../../../generated/prisma/client.js";
 import type {
   CreateCurationPostRequest,
   CreateCurationPostResult,
@@ -8,6 +9,7 @@ import type {
   CurationPostListQuery,
   CurationPostListResult,
   MyBookmarkListResult,
+  MyLikeListResult,
   UpdateCurationPostRequest,
   UpdateCurationPostResult,
 } from "../dto/curation-post.dto.js";
@@ -32,13 +34,15 @@ const SUMMARY_LENGTH = 50;
 const MAX_TITLE_LENGTH = 255;
 const MAX_SOURCE_LENGTH = 255;
 
-function isValidUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
+const CURATION_CATEGORY_NAME_LABELS: Record<CurationCategoryName, string> = {
+  RESEARCH: "연구",
+  CALMING_METHOD: "진정법",
+  DAILY_TIP: "일상팁",
+  ETC: "기타",
+};
+
+function getCategoryNameLabel(name: CurationCategoryName): string {
+  return CURATION_CATEGORY_NAME_LABELS[name];
 }
 
 export class CurationPostService {
@@ -68,12 +72,11 @@ export class CurationPostService {
         return {
           postId: Number(post.postId),
           categoryId: Number(post.categoryId),
-          categoryName: post.category.name,
+          categoryName: getCategoryNameLabel(post.category.name),
           title: post.title,
           estimatedReadTime: post.estimatedReadTime,
           summary,
           source: post.source,
-          thumbnailUrl: post.thumbnailUrl,
           viewCount: post.viewCount,
           likeCount: post._count.likes,
           isLiked: (post.likes?.length ?? 0) > 0,
@@ -108,11 +111,10 @@ export class CurationPostService {
     return {
       postId: Number(post.postId),
       categoryId: Number(post.categoryId),
-      categoryName: post.category.name,
+      categoryName: getCategoryNameLabel(post.category.name),
       title: post.title,
       content: post.content,
       source: post.source,
-      thumbnailUrl: post.thumbnailUrl,
       viewCount: post.viewCount,
       likeCount: post._count.likes,
       estimatedReadTime: post.estimatedReadTime,
@@ -284,12 +286,48 @@ export class CurationPostService {
           bookmarkId: Number(bookmark.bookmarkId),
           postId: Number(bookmark.postId),
           categoryId: Number(bookmark.post.categoryId),
-          categoryName: bookmark.post.category.name,
+          categoryName: getCategoryNameLabel(bookmark.post.category.name),
           title: bookmark.post.title,
           estimatedReadTime: bookmark.post.estimatedReadTime,
           summary,
-          thumbnailUrl: bookmark.post.thumbnailUrl,
+          likeCount: bookmark.post._count.likes,
+          isLiked: (bookmark.post.likes?.length ?? 0) > 0,
           createdAt: bookmark.createdAt.toISOString(),
+        };
+      }),
+      page,
+      size,
+      totalElements,
+      totalPages: Math.ceil(totalElements / size),
+    };
+  }
+
+  async getMyLikes(
+    uid: string,
+    page: number,
+    size: number,
+  ): Promise<MyLikeListResult> {
+    const { likes, totalElements } =
+      await this.curationPostLikeRepository.findManyByUid(uid, page, size);
+
+    return {
+      content: likes.map((like) => {
+        const summary =
+          like.post.content.length > SUMMARY_LENGTH
+            ? `${like.post.content.slice(0, SUMMARY_LENGTH)}...`
+            : like.post.content;
+
+        return {
+          likesId: Number(like.likesId),
+          postId: Number(like.postId),
+          categoryId: Number(like.post.categoryId),
+          categoryName: getCategoryNameLabel(like.post.category.name),
+          title: like.post.title,
+          estimatedReadTime: like.post.estimatedReadTime,
+          summary,
+          likeCount: like.post._count.likes,
+          isBookmarked: (like.post.bookmarks?.length ?? 0) > 0,
+          createdAt: like.createdAt.toISOString(),
         };
       }),
       page,
@@ -396,18 +434,6 @@ export class CurationPostService {
       throw new AppError({
         code: CURATION_POST_CODES.BAD_REQUEST,
         message: CURATION_POST_MESSAGES.INVALID_SOURCE,
-        statusCode: 400,
-      });
-    }
-
-    if (
-      data.thumbnailUrl !== undefined &&
-      data.thumbnailUrl !== null &&
-      (typeof data.thumbnailUrl !== "string" || !isValidUrl(data.thumbnailUrl))
-    ) {
-      throw new AppError({
-        code: CURATION_POST_CODES.BAD_REQUEST,
-        message: CURATION_POST_MESSAGES.INVALID_THUMBNAIL_URL,
         statusCode: 400,
       });
     }

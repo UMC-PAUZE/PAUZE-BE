@@ -2,6 +2,7 @@ import { AppError } from "../../../common/errors/app.error.js";
 import type {
   CreateTodayConditionRequestDto,
   CreateTodayConditionResponseDto,
+  GetTodayConditionResponseDto,
   SensitivityLevel,
   TriggerCode,
 } from "../dto/condition.dto.js";
@@ -10,6 +11,8 @@ import {
   ConditionCreateFailedError,
   ConditionDatabaseTimeoutError,
   ConditionDatabaseUnavailableError,
+  ConditionFetchFailedError,
+  ConditionNotFoundError,
 } from "../errors/condition.errors.js";
 import {
   CONDITION_SCORE_POLICY,
@@ -17,6 +20,7 @@ import {
   getSensitivityLevel,
 } from "../policy/condition.policy.js";
 import {
+  findLatestConditionByUserId,
   findTodayConditionByUserId,
   insertTodayCondition,
 } from "../repository/condition.repository.js";
@@ -163,6 +167,92 @@ export const createTodayCondition = async (
     const mappedError = mapConditionCreateError(error);
     if (!(mappedError instanceof ConditionAlreadyExistsError)) {
       console.error("[conditions] 오늘의 컨디션 저장 실패", error);
+    }
+    throw mappedError;
+  }
+};
+
+interface LatestConditionRecord {
+  conditionId: bigint;
+  conditionDate: Date;
+  sleepLevel: CreateTodayConditionRequestDto["sleepLevel"];
+  noiseLevel: CreateTodayConditionRequestDto["noiseLevel"];
+  visualLevel: CreateTodayConditionRequestDto["visualLevel"];
+  socialLevel: CreateTodayConditionRequestDto["socialLevel"];
+  energyLevel: CreateTodayConditionRequestDto["energyLevel"];
+  sensitivityScore: number;
+  sensitivityLevel: SensitivityLevel;
+  conditionTriggers: Array<{ trigger: { code: string } }>;
+}
+
+interface ConditionFetchRepository {
+  findLatestConditionByUserId: (
+    uid: string,
+  ) => Promise<LatestConditionRecord | null>;
+}
+
+const conditionFetchRepository: ConditionFetchRepository = {
+  findLatestConditionByUserId,
+};
+
+const formatConditionDate = (conditionDate: Date): string =>
+  conditionDate.toISOString().slice(0, 10);
+
+export const mapConditionFetchError = (error: unknown): AppError => {
+  if (error instanceof ConditionNotFoundError) {
+    return error;
+  }
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  const errorCode = getErrorCode(error);
+  if (
+    errorCode === "P1001" ||
+    errorCode === "ECONNREFUSED" ||
+    errorCode === "ENOTFOUND" ||
+    errorCode === "PROTOCOL_CONNECTION_LOST"
+  ) {
+    return new ConditionDatabaseUnavailableError();
+  }
+  if (
+    errorCode === "P1002" ||
+    errorCode === "P2024" ||
+    errorCode === "ETIMEDOUT"
+  ) {
+    return new ConditionDatabaseTimeoutError();
+  }
+  return new ConditionFetchFailedError();
+};
+
+export const getTodayCondition = async (
+  uid: string,
+  repository: ConditionFetchRepository = conditionFetchRepository,
+): Promise<GetTodayConditionResponseDto> => {
+  try {
+    const latest = await repository.findLatestConditionByUserId(uid);
+    if (!latest) {
+      throw new ConditionNotFoundError();
+    }
+
+    return {
+      conditionId: Number(latest.conditionId),
+      conditionDate: formatConditionDate(latest.conditionDate),
+      sleepLevel: latest.sleepLevel,
+      noiseLevel: latest.noiseLevel,
+      visualLevel: latest.visualLevel,
+      socialLevel: latest.socialLevel,
+      energyLevel: latest.energyLevel,
+      sensitivityScore: latest.sensitivityScore,
+      sensitivityLevel: latest.sensitivityLevel,
+      triggerCodes: latest.conditionTriggers.map(
+        ({ trigger }) => trigger.code as TriggerCode,
+      ),
+    };
+  } catch (error) {
+    const mappedError = mapConditionFetchError(error);
+    if (!(mappedError instanceof ConditionNotFoundError)) {
+      console.error("[conditions] 오늘의 컨디션 조회 실패", error);
     }
     throw mappedError;
   }
