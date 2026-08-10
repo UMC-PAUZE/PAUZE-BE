@@ -3,7 +3,10 @@ const parseIntegerAtLeast = (
   fallback: number,
   minimum: number,
 ): number => {
-  const parsed = Number(value);
+  const normalized = value?.trim();
+  if (!normalized) return fallback;
+
+  const parsed = Number(normalized);
   return Number.isInteger(parsed) && parsed >= minimum ? parsed : fallback;
 };
 

@@ -155,7 +155,7 @@ export const aggregateMonthlyWeeks = (
 export const buildWeeklyReport = (
   current: ReportConditionRecord[],
   previous: ReportConditionRecord[],
-  pauzeCount = 0,
+  pauzeCount: number,
   topTriggers = aggregateTopTriggers(current),
   insights: string[] = [],
 ): WeeklyReportDto => {
@@ -189,7 +189,7 @@ export const buildMonthlyReport = (
   current: ReportConditionRecord[],
   previous: ReportConditionRecord[],
   monthStart: Date,
-  pauzeCount = 0,
+  pauzeCount: number,
   topTriggers = aggregateTopTriggers(current),
   insights: string[] = [],
 ): MonthlyReportDto => {
