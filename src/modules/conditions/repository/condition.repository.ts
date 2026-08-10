@@ -60,3 +60,27 @@ export const insertTodayCondition = async ({
       sensitivityLevel: true,
     },
   });
+
+export const findLatestConditionByUserId = async (uid: string) =>
+  prisma.condition.findFirst({
+    where: { uid },
+    orderBy: { conditionDate: "desc" },
+    select: {
+      conditionId: true,
+      conditionDate: true,
+      sleepLevel: true,
+      noiseLevel: true,
+      visualLevel: true,
+      socialLevel: true,
+      energyLevel: true,
+      sensitivityScore: true,
+      sensitivityLevel: true,
+      conditionTriggers: {
+        select: {
+          trigger: {
+            select: { code: true },
+          },
+        },
+      },
+    },
+  });
