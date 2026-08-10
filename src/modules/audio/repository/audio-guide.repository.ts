@@ -1,6 +1,9 @@
 import { prisma } from "../../../db.config.js";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
-import type { AudioCategoryCode } from "../dto/audio.dto.js";
+import type {
+  AudioCategoryCode,
+  AudioCursorPagination,
+} from "../dto/audio.dto.js";
 
 export type AudioGuideListRow = {
   audioId: bigint;
@@ -13,14 +16,26 @@ export type AudioGuideListRow = {
     audioCode: { codeName: string };
   };
   likedBy?: { likedId: bigint }[];
-  savedBy?: { saveId: bigint }[];
+};
+
+export type AudioGuideRelationListRow = {
+  cursorId: bigint;
+  audio: AudioGuideListRow;
 };
 
 export class AudioGuideRepository {
   constructor(private readonly db: PrismaClient) {}
 
-  async findMany(userId?: string): Promise<AudioGuideListRow[]> {
+  async findMany(
+    pagination: AudioCursorPagination,
+    userId?: string,
+  ): Promise<AudioGuideListRow[]> {
     return this.db.audioGuide.findMany({
+      where: {
+        audioId: pagination.cursor ? { lt: pagination.cursor } : undefined,
+      },
+      orderBy: { audioId: "desc" },
+      take: pagination.size + 1,
       include: {
         category: {
           select: {
@@ -34,18 +49,13 @@ export class AudioGuideRepository {
               select: { likedId: true },
             }
           : false,
-        savedBy: userId
-          ? {
-              where: { uid: userId },
-              select: { saveId: true },
-            }
-          : false,
       },
     });
   }
 
   async findManyByCategoryCode(
     categoryCode: AudioCategoryCode,
+    pagination: AudioCursorPagination,
     userId?: string,
   ): Promise<AudioGuideListRow[]> {
     return this.db.audioGuide.findMany({
@@ -55,7 +65,10 @@ export class AudioGuideRepository {
             codeName: categoryCode,
           },
         },
+        audioId: pagination.cursor ? { lt: pagination.cursor } : undefined,
       },
+      orderBy: { audioId: "desc" },
+      take: pagination.size + 1,
       include: {
         category: {
           select: {
@@ -69,50 +82,41 @@ export class AudioGuideRepository {
               select: { likedId: true },
             }
           : false,
-        savedBy: userId
-          ? {
-              where: { uid: userId },
-              select: { saveId: true },
-            }
-          : false,
       },
     });
   }
 
-  async findManyLikedByUser(uid: string): Promise<AudioGuideListRow[]> {
-    return this.findManyByUserRelation(uid, "liked");
-  }
-
-  async findManySavedByUser(uid: string): Promise<AudioGuideListRow[]> {
-    return this.findManyByUserRelation(uid, "saved");
-  }
-
-  private async findManyByUserRelation(
+  async findManyLikedByUser(
     uid: string,
-    relation: "liked" | "saved",
-  ): Promise<AudioGuideListRow[]> {
-    return this.db.audioGuide.findMany({
-      where:
-        relation === "liked"
-          ? { likedBy: { some: { uid } } }
-          : { savedBy: { some: { uid } } },
-      include: {
-        category: {
-          select: {
-            categoryName: true,
-            audioCode: { select: { codeName: true } },
+    pagination: AudioCursorPagination,
+  ): Promise<AudioGuideRelationListRow[]> {
+    const rows = await this.db.audioLiked.findMany({
+      where: {
+        uid,
+        likedId: pagination.cursor ? { lt: pagination.cursor } : undefined,
+      },
+      orderBy: { likedId: "desc" },
+      take: pagination.size + 1,
+      select: {
+        likedId: true,
+        audio: {
+          include: {
+            category: {
+              select: {
+                categoryName: true,
+                audioCode: { select: { codeName: true } },
+              },
+            },
+            likedBy: {
+              where: { uid },
+              select: { likedId: true },
+            },
           },
         },
-        likedBy: {
-          where: { uid },
-          select: { likedId: true },
-        },
-        savedBy: {
-          where: { uid },
-          select: { saveId: true },
-        },
       },
     });
+
+    return rows.map((row) => ({ cursorId: row.likedId, audio: row.audio }));
   }
 
   async findById(audioId: bigint) {

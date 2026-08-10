@@ -12,16 +12,20 @@ export interface AudioGuideListItem {
   categoryCode: AudioCategoryCode;
   fileUrl: string;
   isLiked: boolean;
-  isSaved: boolean;
+}
+
+export interface AudioGuideCursorPage {
+  content: AudioGuideListItem[];
+  nextCursor: string | null;
+  hasNext: boolean;
+}
+
+export interface AudioCursorPagination {
+  cursor?: bigint;
+  size: number;
 }
 
 export interface AudioLikeToggleResult {
   audioId: number;
   isLiked: boolean;
-}
-
-export interface AudioSaveToggleResult {
-  audioId: number;
-  isSaved: boolean;
-  fileUrl: string;
 }
