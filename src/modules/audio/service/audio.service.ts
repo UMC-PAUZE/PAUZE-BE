@@ -126,8 +126,9 @@ export class AudioService {
 
   async deleteAudioGuide(audioId: bigint): Promise<AudioDeleteResult> {
     try {
-      const audio = await this.audioGuideRepository.findById(audioId);
-      if (!audio) {
+      const cleanup =
+        await this.audioGuideRepository.deleteByIdWithCleanup(audioId);
+      if (!cleanup) {
         throw new AppError({
           code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
           message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
@@ -135,14 +136,25 @@ export class AudioService {
         });
       }
 
-      await this.audioGuideRepository.deleteById(audioId);
-
       try {
-        await this.deleteAudioObject(audio.audioKey);
+        await this.deleteAudioObject(cleanup.audioKey);
+        await this.audioGuideRepository.completeCleanup(cleanup.cleanupId);
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        try {
+          await this.audioGuideRepository.recordCleanupFailure(
+            cleanup.cleanupId,
+            message,
+          );
+        } catch (recordError) {
+          console.error("[AudioService] cleanup failure recording failed", {
+            cleanupId: cleanup.cleanupId.toString(),
+            recordError,
+          });
+        }
         console.error("[AudioService] S3 cleanup failed", {
           audioId: audioId.toString(),
-          audioKey: audio.audioKey,
+          audioKey: cleanup.audioKey,
           error,
         });
       }

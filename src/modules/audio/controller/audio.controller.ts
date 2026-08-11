@@ -107,6 +107,7 @@ export class AudioController extends Controller {
    */
   @Get("/")
   @SuccessResponse(200, "OK")
+  @Response<ApiErrorResponse>(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(500, "Internal Server Error")
   public async getAllGuides(
@@ -163,6 +164,7 @@ export class AudioController extends Controller {
   @Get("likes")
   @Security("bearer")
   @SuccessResponse(200, "OK")
+  @Response<ApiErrorResponse>(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(500, "Internal Server Error")
   public async getLikedAudioGuides(

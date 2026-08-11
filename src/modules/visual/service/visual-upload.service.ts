@@ -55,21 +55,23 @@ export class VisualGuideUploadService {
         statusCode: 400,
       });
     }
+    const visualFile = params.visualFile;
 
-    let uploadedKey: string | null = null;
-    try {
-      const previous = await this.repository.findCurrent();
+    return this.repository.withMutationLock(async (repository) => {
+      let uploadedKey: string | null = null;
+      try {
+      const previous = await repository.findCurrent();
 
-      const key = this.storage.buildKey(params.visualFile.originalname);
+      const key = this.storage.buildKey(visualFile.originalname);
       const uploaded = await this.storage.upload({
         key,
-        body: params.visualFile.buffer,
-        filename: params.visualFile.originalname,
-        contentType: params.visualFile.mimetype,
+        body: visualFile.buffer,
+        filename: visualFile.originalname,
+        contentType: visualFile.mimetype,
       });
       uploadedKey = uploaded.key;
 
-      const created = await this.repository.saveCurrent({
+      const created = await repository.saveCurrent({
         visualId: previous?.visualId,
         visualKey: uploaded.key,
         visualTitle,
@@ -79,11 +81,7 @@ export class VisualGuideUploadService {
       });
 
       if (previous?.visualKey && previous.visualKey !== uploaded.key) {
-        try {
-          await this.storage.delete(previous.visualKey);
-        } catch {
-          // best-effort cleanup after the DB points to the new object
-        }
+        await repository.enqueueCleanup(previous.visualKey);
       }
 
       return {
@@ -106,7 +104,8 @@ export class VisualGuideUploadService {
         message: VISUAL_MESSAGES.UPLOAD_FAILED,
         statusCode: 500,
       });
-    }
+      }
+    });
   }
 }
 

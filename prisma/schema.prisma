@@ -379,6 +379,7 @@ model ReportInsight {
 //즉각 진정하기 - 시각 안정
 model VisualGuide {
   visualId      BigInt    @id @default(autoincrement()) @map("visual_id")
+  singletonKey  Int       @default(1) @unique @map("singleton_key")
   visualTitle   String    @db.VarChar(50) @map("visual_title")
   content       String?   @db.VarChar(100)
   visualUrl     String    @db.Text @map("visual_url")
@@ -387,6 +388,24 @@ model VisualGuide {
   updatedAt     DateTime? @map("updated_at")
 
   @@map("visual_guide")
+}
+
+model VisualGuideLock {
+  lockId Int @id @map("lock_id")
+
+  @@map("visual_guide_lock")
+}
+
+model S3CleanupTask {
+  cleanupId    BigInt    @id @default(autoincrement()) @map("cleanup_id")
+  objectKey    String    @unique @db.VarChar(255) @map("object_key")
+  attempts     Int       @default(0)
+  lastError    String?   @db.Text @map("last_error")
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([nextAttemptAt])
+  @@map("s3_cleanup_task")
 }
 
 model PauzeUsage {

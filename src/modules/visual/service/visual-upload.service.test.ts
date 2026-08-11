@@ -17,6 +17,20 @@ const visualFile = {
   buffer: Buffer.from("fake visual audio"),
 } as Express.Multer.File;
 
+function lockedRepository(
+  methods: Record<string, unknown>,
+): VisualGuideRepository {
+  const repository = {
+    ...methods,
+    async withMutationLock<T>(
+      operation: (locked: VisualGuideRepository) => Promise<T>,
+    ) {
+      return operation(repository as unknown as VisualGuideRepository);
+    },
+  };
+  return repository as unknown as VisualGuideRepository;
+}
+
 function createStorage() {
   const uploadedKeys: string[] = [];
   const deletedKeys: string[] = [];
@@ -35,7 +49,7 @@ function createStorage() {
 
 test("백엔드가 생성한 visualKey로 S3에 올리고 DB에 저장한다", async () => {
   let saved: Record<string, unknown> | undefined;
-  const repository = {
+  const repository = lockedRepository({
     async findCurrent() {
       return null;
     },
@@ -49,7 +63,7 @@ test("백엔드가 생성한 visualKey로 S3에 올리고 DB에 저장한다", a
         createdAt: new Date("2026-08-11T06:30:00.000Z"),
       };
     },
-  } as unknown as VisualGuideRepository;
+  });
   const { storage, uploadedKeys } = createStorage();
   const service = new VisualGuideUploadService(repository, storage);
 
@@ -70,9 +84,10 @@ test("백엔드가 생성한 visualKey로 S3에 올리고 DB에 저장한다", a
   });
 });
 
-test("기존 Visual이 있으면 DB를 교체한 뒤 이전 S3 객체를 삭제한다", async () => {
+test("기존 Visual이 있으면 DB를 교체한 뒤 이전 객체 정리 작업을 기록한다", async () => {
   let savedVisualId: unknown;
-  const repository = {
+  const calls: string[] = [];
+  const repository = lockedRepository({
     async findCurrent() {
       return {
         visualId: 1n,
@@ -81,6 +96,7 @@ test("기존 Visual이 있으면 DB를 교체한 뒤 이전 S3 객체를 삭제�
       };
     },
     async saveCurrent(params: Record<string, unknown>) {
+      calls.push("db:save");
       savedVisualId = params.visualId;
       return {
         visualId: 1n,
@@ -90,25 +106,45 @@ test("기존 Visual이 있으면 DB를 교체한 뒤 이전 S3 객체를 삭제�
         createdAt: new Date("2026-08-11T06:30:00.000Z"),
       };
     },
-  } as unknown as VisualGuideRepository;
-  const { storage, deletedKeys } = createStorage();
+    async enqueueCleanup(key: string) {
+      calls.push(`db:enqueue:${key}`);
+    },
+  });
+  const storage: VisualObjectStorage = {
+    buildKey: () => "visual-guides/test.mp3",
+    async upload(params) {
+      calls.push(`s3:upload:${params.key}`);
+      return { key: params.key, url: `https://cdn.test/${params.key}` };
+    },
+    async delete(key) {
+      calls.push(`s3:delete:${key}`);
+    },
+  };
   const service = new VisualGuideUploadService(repository, storage);
 
   await service.upload({ visualFile, visualTitle: "명상" });
 
   assert.equal(savedVisualId, 1n);
-  assert.deepEqual(deletedKeys, ["visual-guides/old.mp3"]);
+  assert.deepEqual(calls, [
+    "s3:upload:visual-guides/test.mp3",
+    "db:save",
+    "db:enqueue:visual-guides/old.mp3",
+  ]);
 });
 
-test("Visual DB 저장 실패 시 새 S3 객체를 삭제한다", async () => {
-  const repository = {
+test("Visual DB 저장 실패 시 이전 객체는 유지하고 새 S3 객체만 삭제한다", async () => {
+  const repository = lockedRepository({
     async findCurrent() {
-      return null;
+      return {
+        visualId: 1n,
+        visualKey: "visual-guides/old.mp3",
+        visualUrl: "https://cdn.test/visual-guides/old.mp3",
+      };
     },
     async saveCurrent() {
       throw new Error("DB failed");
     },
-  } as unknown as VisualGuideRepository;
+  });
   const { storage, deletedKeys } = createStorage();
   const service = new VisualGuideUploadService(repository, storage);
 

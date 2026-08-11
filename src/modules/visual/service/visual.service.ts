@@ -28,7 +28,8 @@ export class VisualGuideService {
 
   async deleteVisualGuide(): Promise<VisualGuideDeleteResult> {
     try {
-      const visual = await this.visualGuideRepository.findCurrent();
+      return await this.visualGuideRepository.withMutationLock(async (repository) => {
+      const visual = await repository.findCurrent();
       if (!visual) {
         throw new AppError({
           code: VISUAL_CODES.VISUAL_GUIDE_NOT_FOUND,
@@ -37,7 +38,17 @@ export class VisualGuideService {
         });
       }
 
-      await this.visualGuideRepository.deleteById(visual.visualId);
+      const deleted = await repository.deleteIfCurrent(
+        visual.visualId,
+        visual.visualKey,
+      );
+      if (!deleted) {
+        throw new AppError({
+          code: VISUAL_CODES.VISUAL_GUIDE_NOT_FOUND,
+          message: VISUAL_MESSAGES.VISUAL_GUIDE_NOT_FOUND,
+          statusCode: 404,
+        });
+      }
       try {
         await this.deleteVisualObject(visual.visualKey);
       } catch (error) {
@@ -49,6 +60,7 @@ export class VisualGuideService {
       }
 
       return { visualId: Number(visual.visualId) };
+      });
     } catch (error) {
       if (error instanceof AppError) throw error;
       throw new AppError({

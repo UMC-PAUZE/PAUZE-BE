@@ -28,6 +28,12 @@ export type AudioGuideDeleteRow = {
   audioKey: string;
 };
 
+export type AudioCleanupTaskRow = {
+  cleanupId: bigint;
+  audioId: bigint;
+  audioKey: string;
+};
+
 export interface AudioGuideRepositoryContract {
   findMany(
     pagination: AudioCursorPagination,
@@ -43,7 +49,9 @@ export interface AudioGuideRepositoryContract {
     pagination: AudioCursorPagination,
   ): Promise<AudioGuideRelationListRow[]>;
   findById(audioId: bigint): Promise<AudioGuideDeleteRow | null>;
-  deleteById(audioId: bigint): Promise<void>;
+  deleteByIdWithCleanup(audioId: bigint): Promise<AudioCleanupTaskRow | null>;
+  completeCleanup(cleanupId: bigint): Promise<void>;
+  recordCleanupFailure(cleanupId: bigint, error: string): Promise<void>;
 }
 
 export class AudioGuideRepository implements AudioGuideRepositoryContract {
@@ -143,8 +151,43 @@ export class AudioGuideRepository implements AudioGuideRepositoryContract {
     });
   }
 
-  async deleteById(audioId: bigint): Promise<void> {
-    await this.db.audioGuide.delete({ where: { audioId } });
+  async deleteByIdWithCleanup(
+    audioId: bigint,
+  ): Promise<AudioCleanupTaskRow | null> {
+    return this.db.$transaction(async (tx) => {
+      const audio = await tx.audioGuide.findUnique({
+        where: { audioId },
+        select: { audioId: true, audioKey: true },
+      });
+      if (!audio) return null;
+
+      const cleanup = await tx.s3CleanupTask.create({
+        data: { objectKey: audio.audioKey },
+        select: { cleanupId: true },
+      });
+      await tx.audioGuide.delete({ where: { audioId } });
+
+      return {
+        cleanupId: cleanup.cleanupId,
+        audioId: audio.audioId,
+        audioKey: audio.audioKey,
+      };
+    });
+  }
+
+  async completeCleanup(cleanupId: bigint): Promise<void> {
+    await this.db.s3CleanupTask.deleteMany({ where: { cleanupId } });
+  }
+
+  async recordCleanupFailure(cleanupId: bigint, error: string): Promise<void> {
+    await this.db.s3CleanupTask.update({
+      where: { cleanupId },
+      data: {
+        attempts: { increment: 1 },
+        lastError: error.slice(0, 2000),
+        nextAttemptAt: new Date(Date.now() + 60_000),
+      },
+    });
   }
 }
 

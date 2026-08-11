@@ -23,6 +23,7 @@ import {
   VISUAL_CODES,
   VISUAL_MESSAGES,
 } from "./modules/visual/errors/visual.errors.js";
+import { startS3CleanupWorker } from "./common/services/s3-cleanup.worker.js";
 
 dotenv.config();
 
@@ -103,4 +104,5 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
+  startS3CleanupWorker();
 });

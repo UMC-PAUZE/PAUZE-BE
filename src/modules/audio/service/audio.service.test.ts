@@ -39,7 +39,11 @@ function createGuideRepository(
     async findById() {
       return null;
     },
-    async deleteById() {},
+    async deleteByIdWithCleanup() {
+      return null;
+    },
+    async completeCleanup() {},
+    async recordCleanupFailure() {},
     ...overrides,
   };
 }
@@ -223,11 +227,12 @@ test("오디오 DB 행을 먼저 삭제하고 S3 객체를 정리한다", async 
   const calls: string[] = [];
   const service = createService(
     {
-      async findById() {
-        return audioRow;
+      async deleteByIdWithCleanup(audioId) {
+        calls.push(`db+outbox:${audioId}`);
+        return { cleanupId: 10n, audioId, audioKey: audioRow.audioKey };
       },
-      async deleteById(audioId) {
-        calls.push(`db:${audioId}`);
+      async completeCleanup(cleanupId) {
+        calls.push(`complete:${cleanupId}`);
       },
     },
     {},
@@ -238,7 +243,11 @@ test("오디오 DB 행을 먼저 삭제하고 S3 객체를 정리한다", async 
 
   const result = await service.deleteAudioGuide(1n);
 
-  assert.deepEqual(calls, ["db:1", "s3:audio/rain.mp3"]);
+  assert.deepEqual(calls, [
+    "db+outbox:1",
+    "s3:audio/rain.mp3",
+    "complete:10",
+  ]);
   assert.deepEqual(result, { audioId: 1 });
 });
 
@@ -246,12 +255,15 @@ test("오디오 삭제 후 S3 정리에 실패해도 성공을 반환한다", as
   const originalConsoleError = console.error;
   console.error = () => {};
   try {
+    const failures: Array<{ cleanupId: bigint; error: string }> = [];
     const service = createService(
       {
-        async findById() {
-          return audioRow;
+        async deleteByIdWithCleanup(audioId) {
+          return { cleanupId: 10n, audioId, audioKey: audioRow.audioKey };
         },
-        async deleteById() {},
+        async recordCleanupFailure(cleanupId, error) {
+          failures.push({ cleanupId, error });
+        },
       },
       {},
       async () => {
@@ -260,6 +272,7 @@ test("오디오 삭제 후 S3 정리에 실패해도 성공을 반환한다", as
     );
 
     assert.deepEqual(await service.deleteAudioGuide(1n), { audioId: 1 });
+    assert.deepEqual(failures, [{ cleanupId: 10n, error: "s3 error" }]);
   } finally {
     console.error = originalConsoleError;
   }
@@ -267,7 +280,7 @@ test("오디오 삭제 후 S3 정리에 실패해도 성공을 반환한다", as
 
 test("존재하지 않는 오디오 삭제 요청은 404를 반환한다", async () => {
   const service = createService({
-    async findById() {
+    async deleteByIdWithCleanup() {
       return null;
     },
   });
@@ -283,10 +296,7 @@ test("존재하지 않는 오디오 삭제 요청은 404를 반환한다", async
 
 test("오디오 DB 삭제 실패를 모듈 500 오류로 변환한다", async () => {
   const service = createService({
-    async findById() {
-      return audioRow;
-    },
-    async deleteById() {
+    async deleteByIdWithCleanup() {
       throw new Error("database error");
     },
   });

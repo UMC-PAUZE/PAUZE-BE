@@ -8,7 +8,6 @@ const AUDIO_MIME_TYPES = new Set([
   "audio/aac",
   "audio/ogg",
   "audio/flac",
-  "video/mp4",
 ]);
 
 const AUDIO_EXTENSIONS = new Set([
@@ -18,7 +17,6 @@ const AUDIO_EXTENSIONS = new Set([
   ".aac",
   ".ogg",
   ".flac",
-  ".mp4",
 ]);
 
 export const AUDIO_FILE_MAX_BYTES = 5 * 1024 * 1024;

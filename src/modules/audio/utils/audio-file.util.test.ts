@@ -17,8 +17,12 @@ test("허용된 오디오 파일 형식을 검증한다", () => {
     true,
   );
   assert.equal(
-    isAllowedAudioFile({ originalname: "meditation.mp4", mimetype: "video/mp4", size: 1 }),
+    isAllowedAudioFile({ originalname: "meditation.m4a", mimetype: "audio/mp4", size: 1 }),
     true,
+  );
+  assert.equal(
+    isAllowedAudioFile({ originalname: "meditation.mp4", mimetype: "video/mp4", size: 1 }),
+    false,
   );
   assert.equal(
     isAllowedAudioFile({ originalname: "image.jpg", mimetype: "image/jpeg", size: 1 }),
