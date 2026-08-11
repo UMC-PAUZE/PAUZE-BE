@@ -54,7 +54,7 @@ export interface WeeklyReportDto {
   hardestDay: string;
   /** 가장 높은 일간 점수 */
   hardestScore: number;
-  /** PAUZE 실행 횟수. 실행 기록 모델 도입 전까지 0 */
+  /** 조회 기간에 완료한 PAUZE 사용 횟수 */
   pauzeCount: number;
   /** 현재 주 평균 - 이전 주 평균. 이전 데이터가 없으면 null */
   scoreChange: number | null;
@@ -73,7 +73,7 @@ export interface MonthlyReportDto {
   hardestWeek: string;
   /** 가장 높은 주차 평균 점수 */
   hardestScore: number;
-  /** PAUZE 실행 횟수. 실행 기록 모델 도입 전까지 0 */
+  /** 조회 기간에 완료한 PAUZE 사용 횟수 */
   pauzeCount: number;
   /** 현재 월 평균 - 이전 월 평균. 이전 데이터가 없으면 null */
   scoreChange: number | null;
