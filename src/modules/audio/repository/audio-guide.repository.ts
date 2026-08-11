@@ -1,5 +1,6 @@
 import { prisma } from "../../../db.config.js";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
+import type { AudioCategoryCode as PrismaAudioCategoryCode } from "../../../generated/prisma/enums.js";
 import type {
   AudioCategoryCode,
   AudioCursorPagination,
@@ -12,8 +13,7 @@ export type AudioGuideListRow = {
   audioKey: string;
   categoryId: bigint;
   category: {
-    categoryName: string;
-    audioCode: { codeName: string };
+    categoryCode: PrismaAudioCategoryCode;
   };
   likedBy?: { likedId: bigint }[];
 };
@@ -23,7 +23,30 @@ export type AudioGuideRelationListRow = {
   audio: AudioGuideListRow;
 };
 
-export class AudioGuideRepository {
+export type AudioGuideDeleteRow = {
+  audioId: bigint;
+  audioKey: string;
+};
+
+export interface AudioGuideRepositoryContract {
+  findMany(
+    pagination: AudioCursorPagination,
+    userId?: string,
+  ): Promise<AudioGuideListRow[]>;
+  findManyByCategoryCode(
+    categoryCode: AudioCategoryCode,
+    pagination: AudioCursorPagination,
+    userId?: string,
+  ): Promise<AudioGuideListRow[]>;
+  findManyLikedByUser(
+    uid: string,
+    pagination: AudioCursorPagination,
+  ): Promise<AudioGuideRelationListRow[]>;
+  findById(audioId: bigint): Promise<AudioGuideDeleteRow | null>;
+  deleteById(audioId: bigint): Promise<void>;
+}
+
+export class AudioGuideRepository implements AudioGuideRepositoryContract {
   constructor(private readonly db: PrismaClient) {}
 
   async findMany(
@@ -39,8 +62,7 @@ export class AudioGuideRepository {
       include: {
         category: {
           select: {
-            categoryName: true,
-            audioCode: { select: { codeName: true } },
+            categoryCode: true,
           },
         },
         likedBy: userId
@@ -61,9 +83,7 @@ export class AudioGuideRepository {
     return this.db.audioGuide.findMany({
       where: {
         category: {
-          audioCode: {
-            codeName: categoryCode,
-          },
+          categoryCode,
         },
         audioId: pagination.cursor ? { lt: pagination.cursor } : undefined,
       },
@@ -72,8 +92,7 @@ export class AudioGuideRepository {
       include: {
         category: {
           select: {
-            categoryName: true,
-            audioCode: { select: { codeName: true } },
+            categoryCode: true,
           },
         },
         likedBy: userId
@@ -103,8 +122,7 @@ export class AudioGuideRepository {
           include: {
             category: {
               select: {
-                categoryName: true,
-                audioCode: { select: { codeName: true } },
+                categoryCode: true,
               },
             },
             likedBy: {
@@ -123,6 +141,10 @@ export class AudioGuideRepository {
     return this.db.audioGuide.findUnique({
       where: { audioId },
     });
+  }
+
+  async deleteById(audioId: bigint): Promise<void> {
+    await this.db.audioGuide.delete({ where: { audioId } });
   }
 }
 

@@ -1,6 +1,7 @@
 import type { Request as ExpressRequest } from "express";
 import {
   Controller,
+  Delete,
   Get,
   Patch,
   Path,
@@ -13,14 +14,20 @@ import {
   Tags,
 } from "tsoa";
 import { AppError } from "../../../common/errors/app.error.js";
+import { requireAdmin } from "../../../common/utils/authorization.util.js";
 import { success } from "../../../common/responses/response.js";
-import type { ApiSuccessResponse } from "../../../common/responses/response.js";
+import type {
+  ApiErrorResponse,
+  ApiSuccessResponse,
+} from "../../../common/responses/response.js";
 import {
   AUTH_CODES,
   AUTH_MESSAGES,
 } from "../../auth/errors/auth.errors.js";
 import type {
+  AudioCategoryCode,
   AudioCursorPagination,
+  AudioDeleteResult,
   AudioGuideCursorPage,
   AudioLikeToggleResult,
 } from "../dto/audio.dto.js";
@@ -132,7 +139,7 @@ export class AudioController extends Controller {
   public async getAudioGuidesByCategory(
     @Request() request: ExpressRequest,
     /** 조회할 카테고리 코드. NATURE_SOUND, ASMR, NOISE 중 하나입니다. */
-    @Query() categoryCode?: string,
+    @Query() categoryCode: AudioCategoryCode,
     /** 이전 응답의 nextCursor. 첫 조회에서는 생략합니다. */
     @Query() cursor?: string,
     /** 한 번에 조회할 개수. 기본값 8, 최대 50입니다. */
@@ -199,6 +206,33 @@ export class AudioController extends Controller {
     return success(
       AUDIO_CODES.TOGGLE_AUDIO_LIKE_SUCCESS,
       AUDIO_MESSAGES.TOGGLE_AUDIO_LIKE_SUCCESS,
+      result,
+    );
+  }
+
+
+  /**
+   * 청각 안정 오디오를 DB에서 삭제한 뒤 저장된 audioKey로 S3 객체 삭제를 시도합니다.
+   * DB 삭제 이후의 S3 정리 실패는 서버에 기록하며 성공 응답에는 영향을 주지 않습니다.
+   */
+  @Delete("{audioId}")
+  @Security("bearer")
+  @SuccessResponse(200, "OK")
+  @Response<ApiErrorResponse>(400, "Bad Request")
+  @Response<ApiErrorResponse>(401, "Unauthorized")
+  @Response<ApiErrorResponse>(403, "Forbidden")
+  @Response<ApiErrorResponse>(404, "Not Found")
+  @Response<ApiErrorResponse>(500, "Internal Server Error")
+  public async deleteAudioGuide(
+    @Request() request: ExpressRequest,
+    /** 삭제할 청각 오디오 식별자입니다. */
+    @Path() audioId: string,
+  ): Promise<ApiSuccessResponse<AudioDeleteResult>> {
+    requireAdmin(request);
+    const result = await audioService.deleteAudioGuide(parseAudioId(audioId));
+    return success(
+      AUDIO_CODES.DELETE_AUDIO_GUIDE_SUCCESS,
+      AUDIO_MESSAGES.DELETE_AUDIO_GUIDE_SUCCESS,
       result,
     );
   }

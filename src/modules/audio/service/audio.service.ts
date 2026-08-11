@@ -1,5 +1,7 @@
 import { AppError } from "../../../common/errors/app.error.js";
+import { deleteObject } from "../../../common/utils/s3.util.js";
 import type {
+  AudioDeleteResult,
   AudioCategoryCode,
   AudioCursorPagination,
   AudioGuideCursorPage,
@@ -9,19 +11,27 @@ import type {
 import { AudioCategoryCode as AudioCategoryCodeValue } from "../dto/audio.dto.js";
 import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
 import {
-  type AudioGuideRepository,
+  type AudioGuideListRow,
+  type AudioGuideRepositoryContract,
   audioGuideRepository,
 } from "../repository/audio-guide.repository.js";
 import {
   type AudioLikeRepository,
   audioLikeRepository,
 } from "../repository/audio-like.repository.js";
-import { getSignedAudioUrl } from "./audio-s3.stub.js";
+
+const AUDIO_CATEGORY_NAMES: Record<AudioCategoryCodeValue, string> = {
+  [AudioCategoryCodeValue.NATURE_SOUND]: "자연의 소리", //categoryCode: "NATURE_SOUND"
+  [AudioCategoryCodeValue.ASMR]: "ASMR", //categoryCode: "ASMR"
+  [AudioCategoryCodeValue.NOISE]: "노이즈", //categoryCode: "NOISE"
+};
 
 export class AudioService {
   constructor(
-    private readonly audioGuideRepository: AudioGuideRepository,
+    private readonly audioGuideRepository: AudioGuideRepositoryContract,
     private readonly audioLikeRepository: AudioLikeRepository,
+    private readonly deleteAudioObject: (key: string) => Promise<void> =
+      deleteObject,
   ) {}
 
   async getAudioGuides(
@@ -114,28 +124,54 @@ export class AudioService {
     }
   }
 
+  async deleteAudioGuide(audioId: bigint): Promise<AudioDeleteResult> {
+    try {
+      const audio = await this.audioGuideRepository.findById(audioId);
+      if (!audio) {
+        throw new AppError({
+          code: AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND,
+          message: AUDIO_MESSAGES.AUDIO_GUIDE_NOT_FOUND,
+          statusCode: 404,
+        });
+      }
+
+      await this.audioGuideRepository.deleteById(audioId);
+
+      try {
+        await this.deleteAudioObject(audio.audioKey);
+      } catch (error) {
+        console.error("[AudioService] S3 cleanup failed", {
+          audioId: audioId.toString(),
+          audioKey: audio.audioKey,
+          error,
+        });
+      }
+
+      return { audioId: Number(audioId) };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+
+      throw new AppError({
+        code: AUDIO_CODES.DELETE_AUDIO_GUIDE_FAILED,
+        message: AUDIO_MESSAGES.DELETE_AUDIO_GUIDE_FAILED,
+        statusCode: 500,
+      });
+    }
+  }
+
   private toListItem(
-    audio: {
-      audioId: bigint;
-      audioTitle: string;
-      audioUrl: string;
-      audioKey: string;
-      categoryId: bigint;
-      category: {
-        categoryName: string;
-        audioCode: { codeName: string };
-      };
-      likedBy?: { likedId: bigint }[];
-    },
+    audio: AudioGuideListRow,
   ): AudioGuideListItem {
     return {
       audioId: Number(audio.audioId),
       audioTitle: audio.audioTitle,
       categoryId: Number(audio.categoryId),
-      categoryName: audio.category.categoryName,
-      categoryCode:
-        audio.category.audioCode.codeName as AudioCategoryCodeValue,
-      fileUrl: getSignedAudioUrl(audio.audioKey, audio.audioUrl),
+      categoryName:
+        AUDIO_CATEGORY_NAMES[
+          audio.category.categoryCode as AudioCategoryCodeValue
+        ],
+      categoryCode: audio.category.categoryCode as AudioCategoryCodeValue,
+      audioUrl: audio.audioUrl,
       isLiked: (audio.likedBy?.length ?? 0) > 0,
     };
   }

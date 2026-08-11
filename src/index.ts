@@ -15,6 +15,14 @@ import {
   USER_CODES,
   USER_MESSAGES,
 } from "./modules/users/errors/user.errors.js";
+import {
+  AUDIO_CODES,
+  AUDIO_MESSAGES,
+} from "./modules/audio/errors/audio.errors.js";
+import {
+  VISUAL_CODES,
+  VISUAL_MESSAGES,
+} from "./modules/visual/errors/visual.errors.js";
 
 dotenv.config();
 
@@ -67,10 +75,21 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     (err instanceof MulterError || err.name === "MulterError") &&
     (err as MulterError).code === "LIMIT_FILE_SIZE";
 
+  const requestPath = req.originalUrl.split("?", 1)[0] ?? req.path;
+  const isAudioUpload = requestPath === "/api/audio-guides/upload";
+  const isVisualUpload = requestPath === "/api/visual-guides/upload";
   const appErr = isMulterFileTooLarge
     ? new AppError({
-        code: USER_CODES.PROFILE_INVALID,
-        message: USER_MESSAGES.PROFILE_INVALID,
+        code: isAudioUpload
+          ? AUDIO_CODES.AUDIO_FILE_INVALID
+          : isVisualUpload
+            ? VISUAL_CODES.BAD_REQUEST
+            : USER_CODES.PROFILE_INVALID,
+        message: isAudioUpload
+          ? AUDIO_MESSAGES.AUDIO_FILE_INVALID
+          : isVisualUpload
+            ? VISUAL_MESSAGES.BAD_REQUEST
+            : USER_MESSAGES.PROFILE_INVALID,
         statusCode: 400,
       })
     : (err as AppError);

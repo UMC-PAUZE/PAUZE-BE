@@ -1,34 +1,58 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
+import { AudioCategoryCode as PrismaAudioCategoryCode } from "../../../generated/prisma/enums.js";
 import { AppError } from "../../../common/errors/app.error.js";
 import { AudioCategoryCode } from "../dto/audio.dto.js";
 import { AUDIO_CODES } from "../errors/audio.errors.js";
-import type { AudioGuideRepository } from "../repository/audio-guide.repository.js";
+import type {
+  AudioGuideListRow,
+  AudioGuideRepositoryContract,
+} from "../repository/audio-guide.repository.js";
 import { AudioLikeRepository } from "../repository/audio-like.repository.js";
 import { AudioService } from "./audio.service.js";
 
-const audioRow = {
+const audioRow: AudioGuideListRow = {
   audioId: 1n,
   audioTitle: "빗소리",
   audioUrl: "https://example.com/rain.mp3",
   audioKey: "audio/rain.mp3",
   categoryId: 10n,
-  createdAt: new Date("2026-08-09T00:00:00.000Z"),
-  updatedAt: null,
   category: {
-    categoryName: "자연의 소리",
-    audioCode: { codeName: "NATURE_SOUND" },
+    categoryCode: PrismaAudioCategoryCode.NATURE_SOUND,
   },
 };
 
+function createGuideRepository(
+  overrides: Partial<AudioGuideRepositoryContract> = {},
+): AudioGuideRepositoryContract {
+  return {
+    async findMany() {
+      return [];
+    },
+    async findManyByCategoryCode() {
+      return [];
+    },
+    async findManyLikedByUser() {
+      return [];
+    },
+    async findById() {
+      return null;
+    },
+    async deleteById() {},
+    ...overrides,
+  };
+}
+
 function createService(
-  guideRepository: Partial<AudioGuideRepository>,
+  guideRepository: Partial<AudioGuideRepositoryContract>,
   likeRepository: Partial<AudioLikeRepository> = {},
+  deleteAudioObject: (key: string) => Promise<void> = async () => {},
 ): AudioService {
   return new AudioService(
-    guideRepository as AudioGuideRepository,
+    createGuideRepository(guideRepository),
     likeRepository as AudioLikeRepository,
+    deleteAudioObject,
   );
 }
 
@@ -51,7 +75,7 @@ test("비로그인 목록은 파일 URL과 좋아요 상태를 반환한다", as
         categoryId: 10,
         categoryName: "자연의 소리",
         categoryCode: "NATURE_SOUND",
-        fileUrl: "https://example.com/rain.mp3",
+        audioUrl: "https://example.com/rain.mp3",
         isLiked: false,
       },
     ],
@@ -103,7 +127,7 @@ test("카테고리 코드가 있으면 카테고리 조건으로 목록을 조�
 
 test("좋아요 목록은 사용자의 좋아요 상태를 반환한다", async () => {
   const guideRepository = {
-    async findManyLikedByUser(uid: string, pagination) {
+    async findManyLikedByUser(uid: string, pagination: { cursor?: bigint; size: number }) {
       assert.equal(uid, "user-uid");
       assert.deepEqual(pagination, { size: 8 });
       return [
@@ -192,6 +216,87 @@ test("존재하지 않는 오디오 좋아요 요청의 404 오류를 그대로 
       error instanceof AppError &&
       error.code === AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND &&
       error.statusCode === 404,
+  );
+});
+
+test("오디오 DB 행을 먼저 삭제하고 S3 객체를 정리한다", async () => {
+  const calls: string[] = [];
+  const service = createService(
+    {
+      async findById() {
+        return audioRow;
+      },
+      async deleteById(audioId) {
+        calls.push(`db:${audioId}`);
+      },
+    },
+    {},
+    async (key) => {
+      calls.push(`s3:${key}`);
+    },
+  );
+
+  const result = await service.deleteAudioGuide(1n);
+
+  assert.deepEqual(calls, ["db:1", "s3:audio/rain.mp3"]);
+  assert.deepEqual(result, { audioId: 1 });
+});
+
+test("오디오 삭제 후 S3 정리에 실패해도 성공을 반환한다", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const service = createService(
+      {
+        async findById() {
+          return audioRow;
+        },
+        async deleteById() {},
+      },
+      {},
+      async () => {
+        throw new Error("s3 error");
+      },
+    );
+
+    assert.deepEqual(await service.deleteAudioGuide(1n), { audioId: 1 });
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("존재하지 않는 오디오 삭제 요청은 404를 반환한다", async () => {
+  const service = createService({
+    async findById() {
+      return null;
+    },
+  });
+
+  await assert.rejects(
+    service.deleteAudioGuide(1n),
+    (error) =>
+      error instanceof AppError &&
+      error.code === AUDIO_CODES.AUDIO_GUIDE_NOT_FOUND &&
+      error.statusCode === 404,
+  );
+});
+
+test("오디오 DB 삭제 실패를 모듈 500 오류로 변환한다", async () => {
+  const service = createService({
+    async findById() {
+      return audioRow;
+    },
+    async deleteById() {
+      throw new Error("database error");
+    },
+  });
+
+  await assert.rejects(
+    service.deleteAudioGuide(1n),
+    (error) =>
+      error instanceof AppError &&
+      error.code === AUDIO_CODES.DELETE_AUDIO_GUIDE_FAILED &&
+      error.statusCode === 500,
   );
 });
 

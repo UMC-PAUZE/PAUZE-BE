@@ -15,8 +15,8 @@ export interface AudioGuideListItem {
   categoryName: string;
   /** 오디오 카테고리 코드 */
   categoryCode: AudioCategoryCode;
-  /** 오디오 재생 및 오프라인 다운로드에 사용할 파일 URL */
-  fileUrl: string;
+  /** 오디오 재생 및 오프라인 다운로드에 사용할 URL */
+  audioUrl: string;
   /** 현재 로그인한 사용자의 좋아요 여부. 비로그인 조회에서는 false */
   isLiked: boolean;
 }
@@ -40,4 +40,9 @@ export interface AudioLikeToggleResult {
   audioId: number;
   /** 변경 후 좋아요 상태 */
   isLiked: boolean;
+}
+
+export interface AudioDeleteResult {
+  /** 삭제된 오디오 식별자 */
+  audioId: number;
 }

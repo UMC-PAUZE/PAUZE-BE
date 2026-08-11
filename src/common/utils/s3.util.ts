@@ -70,6 +70,16 @@ export function buildProfileImageKey(
   return `profiles/${uid}/${randomUUID()}${ext}`;
 }
 
+export function buildAudioKey(originalFilename: string): string {
+  const ext = path.extname(originalFilename).toLowerCase();
+  return `audio-guides/${randomUUID()}${ext}`;
+}
+
+export function buildVisualKey(originalFilename: string): string {
+  const ext = path.extname(originalFilename).toLowerCase();
+  return `visual-guides/${randomUUID()}${ext}`;
+}
+
 export function getObjectUrl(key: string): string {
   const base = requireEnv("S3_PUBLIC_BASE_URL").replace(/\/+$/, "");
   const normalizedKey = key.replace(/^\/+/, "");

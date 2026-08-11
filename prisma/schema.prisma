@@ -12,6 +12,12 @@ enum Role {
   ADMIN
 }
 
+enum AudioCategoryCode {
+  NATURE_SOUND
+  ASMR
+  NOISE
+}
+
 enum SocialType {
   KAKAO
   LOCAL
@@ -226,26 +232,13 @@ model SearchHistory {
 // 즉각 진정하기 - 청각 안정
 
 model AudioCategory {
-  categoryId   BigInt    @id @map("category_id")
-  categoryName String    @db.VarChar(50) @map("category_name")
-  
-  // 외래키로 변경
-  codeId       Int       @map("code_id")
-  audioCode    AudioCode @relation(fields: [codeId], references: [codeId])
-  
-  createdAt    DateTime  @map("created_at")
-  updatedAt    DateTime? @map("updated_at")
+  categoryId   BigInt            @id @map("category_id")
+  categoryCode AudioCategoryCode @unique @map("category_code")
+  createdAt    DateTime          @map("created_at")
+  updatedAt    DateTime?         @map("updated_at")
   audioGuides  AudioGuide[]
 
   @@map("audio_category")
-}
-
-model AudioCode {
-  codeId    Int             @id @default(autoincrement()) @map("code_id")
-  codeName  String          @unique @db.VarChar(50) @map("code_name") // NATURE_SOUND 등 들어옴
-  categories AudioCategory[]
-
-  @@map("audio_code")
 }
 
 model AudioGuide {
