@@ -271,9 +271,15 @@ export class CurationPostService {
     uid: string,
     page: number,
     size: number,
+    keyword?: string,
   ): Promise<MyBookmarkListResult> {
     const { bookmarks, totalElements } =
-      await this.curationPostBookmarkRepository.findManyByUid(uid, page, size);
+      await this.curationPostBookmarkRepository.findManyByUid(
+        uid,
+        page,
+        size,
+        keyword,
+      );
 
     return {
       content: bookmarks.map((bookmark) => {
@@ -306,9 +312,15 @@ export class CurationPostService {
     uid: string,
     page: number,
     size: number,
+    keyword?: string,
   ): Promise<MyLikeListResult> {
     const { likes, totalElements } =
-      await this.curationPostLikeRepository.findManyByUid(uid, page, size);
+      await this.curationPostLikeRepository.findManyByUid(
+        uid,
+        page,
+        size,
+        keyword,
+      );
 
     return {
       content: likes.map((like) => {
