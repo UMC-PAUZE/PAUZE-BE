@@ -341,18 +341,6 @@ model ConditionTrigger {
   @@map("condition_trigger")
 }
 
-model PauzeUsage {
-  usageId      BigInt   @id @map("usage_id")
-  uid          String   @db.Char(36)
-  completedAt  DateTime
-  completionId String?  @db.Char(36)
-
-  user User @relation(fields: [uid], references: [uid], onDelete: Cascade)
-
-  @@index([uid, completedAt])
-  @@map("pauze_usage")
-}
-
 model SensitivityReport {
   reportId             BigInt     @id @default(autoincrement()) @map("report_id")
   uid                  String     @db.Char(36)
@@ -420,4 +408,17 @@ model VisualGuide {
   updatedAt     DateTime? @map("updated_at")
 
   @@map("visual_guide")
+}
+
+model PauzeUsage {
+  usageId      BigInt   @id @default(autoincrement()) @map("usage_id")
+  uid          String   @db.Char(36)
+  completionId String   @db.Char(36)
+  completedAt  DateTime @default(now()) @db.DateTime(3)
+
+  user User @relation(fields: [uid], references: [uid], onDelete: Cascade, map: "pauze_usage_uid_fkey")
+
+  @@unique([uid, completionId])
+  @@index([uid, completedAt])
+  @@map("pauze_usage")
 }

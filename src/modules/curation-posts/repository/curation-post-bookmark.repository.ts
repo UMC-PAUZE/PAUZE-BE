@@ -29,8 +29,26 @@ export class CurationPostBookmarkRepository {
     });
   }
 
-  async findManyByUid(uid: string, page: number, size: number) {
-    const where = { uid, post: { isPublished: true } };
+  async findManyByUid(
+    uid: string,
+    page: number,
+    size: number,
+    keyword?: string,
+  ) {
+    const where = {
+      uid,
+      post: {
+        isPublished: true,
+        ...(keyword
+          ? {
+              OR: [
+                { title: { contains: keyword } },
+                { content: { contains: keyword } },
+              ],
+            }
+          : {}),
+      },
+    };
 
     const [bookmarks, totalElements] = await Promise.all([
       this.db.postBookmark.findMany({

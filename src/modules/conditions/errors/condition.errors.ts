@@ -43,3 +43,25 @@ export class ConditionDatabaseTimeoutError extends AppError {
     });
   }
 }
+
+export class ConditionNotFoundError extends AppError {
+  constructor() {
+    super({
+      code: "CONDITION_NOT_FOUND_404",
+      message: "컨디션을 찾을 수 없습니다.",
+      statusCode: 404,
+      result: [],
+    });
+  }
+}
+
+export class ConditionFetchFailedError extends AppError {
+  constructor() {
+    super({
+      code: "CONDITION_FETCH_FAILED_500",
+      message: "오늘의 컨디션 조회에 실패했습니다.",
+      statusCode: 500,
+      result: [],
+    });
+  }
+}
