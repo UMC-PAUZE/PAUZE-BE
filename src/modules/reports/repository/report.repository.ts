@@ -5,6 +5,7 @@ import type {
   ReportPeriodType,
   TriggerRankMetric,
 } from "../calculator/insight.types.js";
+import type { GeneratedInsight } from "../generator/insight-generation.types.js";
 
 export const findConditionsByUserAndDateRange = async (
   uid: string,
@@ -94,9 +95,9 @@ export interface ReplaceStoredReportParams {
   previousAverageScore: number | null;
   scoreChange: number | null;
   pauzeCount: number;
+  sourceDataHash: string;
   triggerRanks: TriggerRankMetric[];
-  insights: InsightCandidate[];
-  insightContents: string[];
+  insights: GeneratedInsight[];
 }
 
 export const replaceStoredReport = async ({
@@ -109,9 +110,9 @@ export const replaceStoredReport = async ({
   previousAverageScore,
   scoreChange,
   pauzeCount,
+  sourceDataHash,
   triggerRanks,
   insights,
-  insightContents,
 }: ReplaceStoredReportParams) => {
   await prisma.$transaction(async (transaction) => {
     const now = new Date();
@@ -134,6 +135,7 @@ export const replaceStoredReport = async ({
         previousAverageScore,
         scoreChange,
         pauzeCount,
+        sourceDataHash,
         createdAt: now,
         updatedAt: now,
       },
@@ -143,6 +145,7 @@ export const replaceStoredReport = async ({
         previousAverageScore,
         scoreChange,
         pauzeCount,
+        sourceDataHash,
         updatedAt: now,
       },
       select: { reportId: true },
@@ -183,9 +186,16 @@ export const replaceStoredReport = async ({
     await transaction.reportInsight.createMany({
       data: insights.map((insight, index) => ({
         reportId: report.reportId,
-        insightType: insight.type,
-        content: insightContents[index]!,
+        insightType: insight.candidate.type,
+        content: insight.content,
         displayOrder: index + 1,
+        generationSource: insight.generationSource,
+        modelName: insight.modelName,
+        promptVersion: insight.promptVersion,
+        metricsJson: insight.metrics,
+        calculationHash: insight.calculationHash,
+        generatedAt: insight.generatedAt,
+        generationError: insight.generationError,
         createdAt: now,
         updatedAt: now,
       })),
