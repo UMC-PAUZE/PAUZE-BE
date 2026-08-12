@@ -251,8 +251,6 @@ export class UserService {
       }
     }
 
-    let profileImageUrl = user.profileImageUrl;
-    let profileS3Key = user.profileS3Key;
     let uploadedKey: string | null = null;
     const previousKey = user.profileS3Key;
     const data: Prisma.UserUpdateInput = {};
@@ -277,13 +275,9 @@ export class UserService {
           contentType: uploadedImage.mimetype,
         });
         uploadedKey = uploaded.key;
-        profileImageUrl = uploaded.url;
-        profileS3Key = uploaded.key;
-        data.profileImageUrl = profileImageUrl;
-        data.profileS3Key = profileS3Key;
+        data.profileImageUrl = uploaded.url;
+        data.profileS3Key = uploaded.key;
       } else if (removeProfileImage === true) {
-        profileImageUrl = null;
-        profileS3Key = null;
         data.profileImageUrl = null;
         data.profileS3Key = null;
       }

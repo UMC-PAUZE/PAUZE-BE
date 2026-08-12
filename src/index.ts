@@ -4,6 +4,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
 import { MulterError } from "multer";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
@@ -12,9 +13,22 @@ import { RegisterRoutes } from "./generated/routes.js";
 import { AppError } from "./common/errors/app.error.js";
 import { authenticate } from "./common/middlewares/auth.middleware.js";
 import {
+  AUTH_CODES,
+  AUTH_MESSAGES,
+} from "./modules/auth/errors/auth.errors.js";
+import {
   USER_CODES,
   USER_MESSAGES,
 } from "./modules/users/errors/user.errors.js";
+import {
+  AUDIO_CODES,
+  AUDIO_MESSAGES,
+} from "./modules/audio/errors/audio.errors.js";
+import {
+  VISUAL_CODES,
+  VISUAL_MESSAGES,
+} from "./modules/visual/errors/visual.errors.js";
+import { startS3CleanupWorker } from "./common/services/s3-cleanup.worker.js";
 
 dotenv.config();
 
@@ -44,17 +58,26 @@ const swaggerFile = JSON.parse(
   fs.readFileSync(path.resolve("dist/swagger.json"), "utf8")
 );
 
-const optionalBearerSecurity = [{ bearer: [] }, {}];
-for (const path of ["/audio-guides", "/audio-guides/categories"]) {
-  if (swaggerFile.paths?.[path]?.get) {
-    swaggerFile.paths[path].get.security = optionalBearerSecurity;
-  }
-}
-
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
+
+const availabilityLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).error({
+      code: AUTH_CODES.AVAILABILITY_RATE_LIMIT,
+      message: AUTH_MESSAGES.AVAILABILITY_RATE_LIMIT,
+      result: null,
+    });
+  },
+});
 
 const router = express.Router();
 router.use(authenticate);
+router.get("/auth/email/availability", availabilityLimiter);
+router.get("/auth/nickname/availability", availabilityLimiter);
 RegisterRoutes(router);
 app.use("/api", router);
 
@@ -67,10 +90,21 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     (err instanceof MulterError || err.name === "MulterError") &&
     (err as MulterError).code === "LIMIT_FILE_SIZE";
 
+  const requestPath = req.originalUrl.split("?", 1)[0] ?? req.path;
+  const isAudioUpload = requestPath === "/api/audio-guides/upload";
+  const isVisualUpload = requestPath === "/api/visual-guides/upload";
   const appErr = isMulterFileTooLarge
     ? new AppError({
-        code: USER_CODES.PROFILE_INVALID,
-        message: USER_MESSAGES.PROFILE_INVALID,
+        code: isAudioUpload
+          ? AUDIO_CODES.AUDIO_FILE_INVALID
+          : isVisualUpload
+            ? VISUAL_CODES.BAD_REQUEST
+            : USER_CODES.PROFILE_INVALID,
+        message: isAudioUpload
+          ? AUDIO_MESSAGES.AUDIO_FILE_INVALID
+          : isVisualUpload
+            ? VISUAL_MESSAGES.BAD_REQUEST
+            : USER_MESSAGES.PROFILE_INVALID,
         statusCode: 400,
       })
     : (err as AppError);
@@ -84,4 +118,5 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
+  startS3CleanupWorker();
 });

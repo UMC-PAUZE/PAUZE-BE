@@ -172,12 +172,6 @@ export type EmailPendingPurpose = "SIGNUP" | "LINK";
 export interface SignupPendingPayload {
   purpose: "SIGNUP";
   email: string;
-  salt: string;
-  hashedPassword: string;
-  name: string;
-  nickname: string;
-  birth: string;
-  termAgreements: Array<{ termId: number; agreed: boolean }>;
 }
 
 export interface LinkPendingPayload {
@@ -262,15 +256,26 @@ export async function deleteEmailPending(email: string): Promise<void> {
   await client.del(`email:pending:${email}`);
 }
 
-export async function saveEmailVerified(email: string): Promise<void> {
+export async function saveEmailVerified(
+  email: string,
+  purpose: EmailPendingPurpose
+): Promise<void> {
   const client = getRedisClient();
-  await client.set(`email:verified:${email}`, "1", "EX", EMAIL_VERIFIED_TTL_SECONDS);
+  await client.set(
+    `email:verified:${email}`,
+    purpose,
+    "EX",
+    EMAIL_VERIFIED_TTL_SECONDS
+  );
 }
 
-export async function isEmailVerified(email: string): Promise<boolean> {
+export async function isEmailVerified(
+  email: string,
+  purpose: EmailPendingPurpose
+): Promise<boolean> {
   const client = getRedisClient();
   const value = await client.get(`email:verified:${email}`);
-  return value === "1";
+  return value === purpose;
 }
 
 export async function deleteEmailVerified(email: string): Promise<void> {
