@@ -24,7 +24,8 @@ enum SocialType {
 }
 
 enum TermName {
-  NONE
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
 }
 
 enum CurationCategoryName {
@@ -146,9 +147,10 @@ model Oauth {
 
 model Term {
   termId    BigInt     @id @default(autoincrement()) @map("term_id")
-  termName  TermName   @default(NONE) @map("term_name")
+  termName  TermName   @map("term_name")
   userTerms UserTerm[]
 
+  @@unique([termName])
   @@map("term")
 }
 

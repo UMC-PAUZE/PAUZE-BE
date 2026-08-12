@@ -31,7 +31,7 @@ export class VisualGuideRepository {
         visualUrl: string;
         createdAt: Date;
     }) {
-        const { visualId, createdAt, ...data } = params;
+        const { visualId: _visualId, createdAt, ...data } = params;
         const select = {
             visualId: true,
             visualKey: true,

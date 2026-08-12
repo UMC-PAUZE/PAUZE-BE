@@ -4,6 +4,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
 import { MulterError } from "multer";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
@@ -11,6 +12,10 @@ import fs from "fs";
 import { RegisterRoutes } from "./generated/routes.js";
 import { AppError } from "./common/errors/app.error.js";
 import { authenticate } from "./common/middlewares/auth.middleware.js";
+import {
+  AUTH_CODES,
+  AUTH_MESSAGES,
+} from "./modules/auth/errors/auth.errors.js";
 import {
   USER_CODES,
   USER_MESSAGES,
@@ -53,43 +58,26 @@ const swaggerFile = JSON.parse(
   fs.readFileSync(path.resolve("dist/swagger.json"), "utf8")
 );
 
-const audioCategoryCodeSchema = {
-  type: "string",
-  enum: ["NATURE_SOUND", "ASMR", "NOISE"],
-};
-
-const optionalBearerSecurity = [{ bearer: [] }, {}];
-if (swaggerFile.paths?.["/audio-guides"]?.get) {
-  swaggerFile.paths["/audio-guides"].get.security = optionalBearerSecurity;
-
-  const categoryCodeParam = swaggerFile.paths["/audio-guides"].get.parameters?.find(
-    (param: { name?: string }) => param.name === "categoryCode",
-  );
-  if (categoryCodeParam?.schema?.$ref) {
-    categoryCodeParam.schema = {
-      ...audioCategoryCodeSchema,
-      description: categoryCodeParam.description,
-    };
-  }
-}
-
-const audioUploadFormSchema =
-  swaggerFile.paths?.["/audio-guides/upload"]?.post?.requestBody?.content?.[
-    "multipart/form-data"
-  ]?.schema;
-if (audioUploadFormSchema?.properties?.categoryCode) {
-  audioUploadFormSchema.properties.categoryCode = {
-    ...audioCategoryCodeSchema,
-    description:
-      audioUploadFormSchema.properties.categoryCode.description ??
-      "오디오 카테고리 코드. NATURE_SOUND, ASMR, NOISE 중 하나입니다.",
-  };
-}
-
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
+
+const availabilityLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).error({
+      code: AUTH_CODES.AVAILABILITY_RATE_LIMIT,
+      message: AUTH_MESSAGES.AVAILABILITY_RATE_LIMIT,
+      result: null,
+    });
+  },
+});
 
 const router = express.Router();
 router.use(authenticate);
+router.get("/auth/email/availability", availabilityLimiter);
+router.get("/auth/nickname/availability", availabilityLimiter);
 RegisterRoutes(router);
 app.use("/api", router);
 
