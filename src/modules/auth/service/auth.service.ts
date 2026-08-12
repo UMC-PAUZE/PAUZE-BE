@@ -200,10 +200,20 @@ export class AuthService {
       }
     }
 
-    const termIds = [
-      ...new Set(termAgreements.map((agreement) => BigInt(agreement.termId))),
-    ];
-    if (termIds.length !== termAgreements.length) {
+    const termIds: bigint[] = [];
+    for (const agreement of termAgreements) {
+      if (!Number.isInteger(agreement.termId)) {
+        throw new AppError({
+          code: AUTH_CODES.SIGNUP_INVALID_REQUEST,
+          message: AUTH_MESSAGES.SIGNUP_INVALID_REQUEST,
+          statusCode: 400,
+        });
+      }
+      termIds.push(BigInt(agreement.termId));
+    }
+
+    const uniqueTermIds = [...new Set(termIds)];
+    if (uniqueTermIds.length !== termAgreements.length) {
       throw new AppError({
         code: AUTH_CODES.SIGNUP_INVALID_REQUEST,
         message: AUTH_MESSAGES.SIGNUP_INVALID_REQUEST,
@@ -212,10 +222,10 @@ export class AuthService {
     }
 
     const terms = await prisma.term.findMany({
-      where: { termId: { in: termIds } },
+      where: { termId: { in: uniqueTermIds } },
     });
 
-    if (terms.length !== termIds.length) {
+    if (terms.length !== uniqueTermIds.length) {
       throw new AppError({
         code: AUTH_CODES.SIGNUP_INVALID_REQUEST,
         message: AUTH_MESSAGES.SIGNUP_INVALID_REQUEST,
@@ -233,13 +243,13 @@ export class AuthService {
 
     if (requiredTerms.length !== 2) {
       throw new AppError({
-        code: AUTH_CODES.SIGNUP_INVALID_REQUEST,
-        message: AUTH_MESSAGES.SIGNUP_INVALID_REQUEST,
-        statusCode: 400,
+        code: AUTH_CODES.SIGNUP_FAILED,
+        message: AUTH_MESSAGES.SIGNUP_FAILED,
+        statusCode: 500,
       });
     }
 
-    const agreedIds = new Set(termIds.map((id) => id.toString()));
+    const agreedIds = new Set(uniqueTermIds.map((id) => id.toString()));
     for (const required of requiredTerms) {
       if (!agreedIds.has(required.termId.toString())) {
         throw new AppError({
@@ -478,7 +488,7 @@ export class AuthService {
     const name = body.name.trim();
     const email = body.email.trim().toLowerCase();
 
-    if (!(await isEmailVerified(email))) {
+    if (!(await isEmailVerified(email, "SIGNUP"))) {
       throw new AppError({
         code: AUTH_CODES.EMAIL_NOT_VERIFIED,
         message: AUTH_MESSAGES.EMAIL_NOT_VERIFIED,
@@ -667,7 +677,7 @@ export class AuthService {
 
     await deleteEmailCode(email);
     await deleteEmailCodeAttempts(email);
-    await saveEmailVerified(email);
+    await saveEmailVerified(email, pending.purpose);
     await deleteEmailPending(email);
 
     if (pending.purpose === "LINK") {
@@ -683,10 +693,17 @@ export class AuthService {
     };
   }
 
-  async kakaoConfirm(
-    body: KakaoConfirmRequestDto
+  private async prepareLinkEmailCode(
+    emailInput: string | undefined,
+    kakaoAccessToken: string,
+    assertAccount: (
+      user: {
+        oauths: { socialType: SocialType; providerId: string }[];
+      } | null,
+      kakaoUser: { providerId: string; email: string }
+    ) => void
   ): Promise<EmailCodeSentResultDto> {
-    if (!body.email || !isValidEmail(body.email)) {
+    if (!emailInput || !isValidEmail(emailInput)) {
       throw new AppError({
         code: AUTH_CODES.SIGNUP_INVALID_REQUEST,
         message: AUTH_MESSAGES.SIGNUP_INVALID_REQUEST,
@@ -694,8 +711,8 @@ export class AuthService {
       });
     }
 
-    const email = body.email.trim().toLowerCase();
-    const kakaoUser = await this.requireKakaoUser(body.kakaoAccessToken);
+    const email = emailInput.trim().toLowerCase();
+    const kakaoUser = await this.requireKakaoUser(kakaoAccessToken);
 
     if (kakaoUser.email.toLowerCase() !== email) {
       throw new AppError({
@@ -707,99 +724,101 @@ export class AuthService {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { oauths: true },
+      select: {
+        oauths: {
+          select: {
+            socialType: true,
+            providerId: true,
+          },
+        },
+      },
     });
 
-    const kakaoOauth = user?.oauths.find(
-      (oauth) => oauth.socialType === SocialType.KAKAO
-    );
-    const hasLocal = user?.oauths.some(
-      (oauth) => oauth.socialType === SocialType.LOCAL
-    );
-
-    if (
-      !kakaoOauth ||
-      kakaoOauth.providerId !== kakaoUser.providerId ||
-      hasLocal
-    ) {
-      throw new AppError({
-        code: AUTH_CODES.KAKAO_ACCOUNT_MISMATCH,
-        message: AUTH_MESSAGES.KAKAO_ACCOUNT_MISMATCH,
-        statusCode: 409,
-      });
-    }
+    assertAccount(user, kakaoUser);
 
     return this.sendCodeAndStorePending(email, {
       purpose: "LINK",
       email,
       kakaoProviderId: kakaoUser.providerId,
     });
+  }
+
+  async kakaoConfirm(
+    body: KakaoConfirmRequestDto
+  ): Promise<EmailCodeSentResultDto> {
+    return this.prepareLinkEmailCode(
+      body.email,
+      body.kakaoAccessToken,
+      (user, kakaoUser) => {
+        const kakaoOauth = user?.oauths.find(
+          (oauth) => oauth.socialType === SocialType.KAKAO
+        );
+        const hasLocal = user?.oauths.some(
+          (oauth) => oauth.socialType === SocialType.LOCAL
+        );
+
+        if (
+          !kakaoOauth ||
+          kakaoOauth.providerId !== kakaoUser.providerId ||
+          hasLocal
+        ) {
+          throw new AppError({
+            code: AUTH_CODES.KAKAO_ACCOUNT_MISMATCH,
+            message: AUTH_MESSAGES.KAKAO_ACCOUNT_MISMATCH,
+            statusCode: 409,
+          });
+        }
+      }
+    );
   }
 
   /** LOCAL→KAKAO: send email verification code before link. */
   async sendLinkEmailCode(
     body: LinkEmailCodeRequestDto
   ): Promise<EmailCodeSentResultDto> {
-    if (!body.email || !isValidEmail(body.email)) {
-      throw new AppError({
-        code: AUTH_CODES.SIGNUP_INVALID_REQUEST,
-        message: AUTH_MESSAGES.SIGNUP_INVALID_REQUEST,
-        statusCode: 400,
-      });
-    }
+    return this.prepareLinkEmailCode(
+      body.email,
+      body.kakaoAccessToken,
+      (user) => {
+        if (!user) {
+          throw new AppError({
+            code: AUTH_CODES.LINK_INVALID_REQUEST,
+            message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+            statusCode: 400,
+          });
+        }
 
-    const email = body.email.trim().toLowerCase();
-    const kakaoUser = await this.requireKakaoUser(body.kakaoAccessToken);
+        const hasLocal = user.oauths.some(
+          (oauth) => oauth.socialType === SocialType.LOCAL
+        );
+        const hasKakao = user.oauths.some(
+          (oauth) => oauth.socialType === SocialType.KAKAO
+        );
 
-    if (kakaoUser.email.toLowerCase() !== email) {
-      throw new AppError({
-        code: AUTH_CODES.KAKAO_ACCOUNT_MISMATCH,
-        message: AUTH_MESSAGES.KAKAO_ACCOUNT_MISMATCH,
-        statusCode: 409,
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { oauths: true },
-    });
-
-    if (!user) {
-      throw new AppError({
-        code: AUTH_CODES.LINK_INVALID_REQUEST,
-        message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
-        statusCode: 400,
-      });
-    }
-
-    const hasLocal = user.oauths.some(
-      (oauth) => oauth.socialType === SocialType.LOCAL
+        if (!hasLocal || hasKakao) {
+          throw new AppError({
+            code: AUTH_CODES.LINK_INVALID_REQUEST,
+            message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+            statusCode: 400,
+          });
+        }
+      }
     );
-    const hasKakao = user.oauths.some(
-      (oauth) => oauth.socialType === SocialType.KAKAO
-    );
-
-    if (!hasLocal || hasKakao) {
-      throw new AppError({
-        code: AUTH_CODES.LINK_INVALID_REQUEST,
-        message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
-        statusCode: 400,
-      });
-    }
-
-    return this.sendCodeAndStorePending(email, {
-      purpose: "LINK",
-      email,
-      kakaoProviderId: kakaoUser.providerId,
-    });
   }
 
   async linkAccount(body: LinkAccountRequestDto): Promise<AuthTokenResultDto> {
     const kakaoUser = await this.requireKakaoUser(body.kakaoAccessToken);
     const kakaoEmail = kakaoUser.email.toLowerCase();
 
-    // KAKAO → LOCAL: existing KAKAO account receives LOCAL credentials
-    if (body.email && body.password) {
+    if (body.direction === "KAKAO_TO_LOCAL") {
+      if (!body.email || !body.password) {
+        throw new AppError({
+          code: AUTH_CODES.LINK_INVALID_REQUEST,
+          message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+          statusCode: 400,
+        });
+      }
+
       const email = body.email.trim().toLowerCase();
 
       if (!isValidEmail(email) || !isValidPassword(body.password)) {
@@ -810,7 +829,7 @@ export class AuthService {
         });
       }
 
-      if (!(await isEmailVerified(email))) {
+      if (!(await isEmailVerified(email, "LINK"))) {
         throw new AppError({
           code: AUTH_CODES.EMAIL_NOT_VERIFIED,
           message: AUTH_MESSAGES.EMAIL_NOT_VERIFIED,
@@ -891,88 +910,87 @@ export class AuthService {
       };
     }
 
-    // LOCAL → KAKAO: email code verified required (no password)
-    if (body.password && !body.email) {
-      throw new AppError({
-        code: AUTH_CODES.LINK_INVALID_REQUEST,
-        message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
-        statusCode: 400,
-      });
-    }
-
-    const linkEmail = body.email?.trim().toLowerCase() || kakaoEmail;
-    if (body.email && linkEmail !== kakaoEmail) {
-      throw new AppError({
-        code: AUTH_CODES.KAKAO_ACCOUNT_MISMATCH,
-        message: AUTH_MESSAGES.KAKAO_ACCOUNT_MISMATCH,
-        statusCode: 409,
-      });
-    }
-
-    if (!(await isEmailVerified(linkEmail))) {
-      throw new AppError({
-        code: AUTH_CODES.EMAIL_NOT_VERIFIED,
-        message: AUTH_MESSAGES.EMAIL_NOT_VERIFIED,
-        statusCode: 400,
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: linkEmail },
-      include: { oauths: true },
-    });
-
-    if (!user) {
-      throw new AppError({
-        code: AUTH_CODES.LINK_INVALID_REQUEST,
-        message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
-        statusCode: 400,
-      });
-    }
-
-    const hasLocal = user.oauths.some(
-      (oauth) => oauth.socialType === SocialType.LOCAL
-    );
-    const hasKakao = user.oauths.some(
-      (oauth) => oauth.socialType === SocialType.KAKAO
-    );
-
-    if (!hasLocal || hasKakao) {
-      throw new AppError({
-        code: AUTH_CODES.LINK_INVALID_REQUEST,
-        message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
-        statusCode: 400,
-      });
-    }
-
-    try {
-      await prisma.oauth.create({
-        data: {
-          uid: user.uid,
-          socialType: SocialType.KAKAO,
-          providerId: kakaoUser.providerId,
-          password: null,
-          loginEmail: linkEmail,
-        },
-      });
-    } catch (error) {
-      if (this.isUniqueConstraintError(error)) {
+    if (body.direction === "LOCAL_TO_KAKAO") {
+      const linkEmail = body.email?.trim().toLowerCase() || kakaoEmail;
+      if (body.email && linkEmail !== kakaoEmail) {
         throw new AppError({
-          code: AUTH_CODES.LINK_INVALID_REQUEST,
-          message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+          code: AUTH_CODES.KAKAO_ACCOUNT_MISMATCH,
+          message: AUTH_MESSAGES.KAKAO_ACCOUNT_MISMATCH,
           statusCode: 409,
         });
       }
-      throw error;
+
+      if (!(await isEmailVerified(linkEmail, "LINK"))) {
+        throw new AppError({
+          code: AUTH_CODES.EMAIL_NOT_VERIFIED,
+          message: AUTH_MESSAGES.EMAIL_NOT_VERIFIED,
+          statusCode: 400,
+        });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { email: linkEmail },
+        include: { oauths: true },
+      });
+
+      if (!user) {
+        throw new AppError({
+          code: AUTH_CODES.LINK_INVALID_REQUEST,
+          message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+          statusCode: 400,
+        });
+      }
+
+      const hasLocal = user.oauths.some(
+        (oauth) => oauth.socialType === SocialType.LOCAL
+      );
+      const hasKakao = user.oauths.some(
+        (oauth) => oauth.socialType === SocialType.KAKAO
+      );
+
+      if (!hasLocal || hasKakao) {
+        throw new AppError({
+          code: AUTH_CODES.LINK_INVALID_REQUEST,
+          message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+          statusCode: 400,
+        });
+      }
+
+      try {
+        await prisma.oauth.create({
+          data: {
+            uid: user.uid,
+            socialType: SocialType.KAKAO,
+            providerId: kakaoUser.providerId,
+            password: null,
+            loginEmail: linkEmail,
+          },
+        });
+      } catch (error) {
+        if (this.isUniqueConstraintError(error)) {
+          throw new AppError({
+            code: AUTH_CODES.LINK_INVALID_REQUEST,
+            message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+            statusCode: 409,
+          });
+        }
+        throw error;
+      }
+
+      await deleteEmailVerified(linkEmail);
+      const tokens = await this.issueTokens(user, kakaoUser.providerId);
+
+      return {
+        ...tokens,
+        user: this.toAuthUser(user),
+      };
     }
 
-    await deleteEmailVerified(linkEmail);
-    const tokens = await this.issueTokens(user, kakaoUser.providerId);
-
-    return {
-      ...tokens,
-      user: this.toAuthUser(user),
-    };
+    throw new AppError({
+      code: AUTH_CODES.LINK_INVALID_REQUEST,
+      message: AUTH_MESSAGES.LINK_INVALID_REQUEST,
+      statusCode: 400,
+    });
   }
 
   async kakaoLogin(

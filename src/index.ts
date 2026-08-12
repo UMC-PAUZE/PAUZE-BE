@@ -4,6 +4,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
 import { MulterError } from "multer";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
@@ -11,6 +12,10 @@ import fs from "fs";
 import { RegisterRoutes } from "./generated/routes.js";
 import { AppError } from "./common/errors/app.error.js";
 import { authenticate } from "./common/middlewares/auth.middleware.js";
+import {
+  AUTH_CODES,
+  AUTH_MESSAGES,
+} from "./modules/auth/errors/auth.errors.js";
 import {
   USER_CODES,
   USER_MESSAGES,
@@ -55,8 +60,24 @@ const swaggerFile = JSON.parse(
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
+const availabilityLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).error({
+      code: AUTH_CODES.AVAILABILITY_RATE_LIMIT,
+      message: AUTH_MESSAGES.AVAILABILITY_RATE_LIMIT,
+      result: null,
+    });
+  },
+});
+
 const router = express.Router();
 router.use(authenticate);
+router.get("/auth/email/availability", availabilityLimiter);
+router.get("/auth/nickname/availability", availabilityLimiter);
 RegisterRoutes(router);
 app.use("/api", router);
 

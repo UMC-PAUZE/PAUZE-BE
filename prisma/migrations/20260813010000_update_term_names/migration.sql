@@ -14,13 +14,12 @@ WHERE NOT EXISTS (
   SELECT 1 FROM `term` WHERE `term_name` = 'PRIVACY_POLICY'
 );
 
--- Remap any user_term rows that pointed at NONE → TERMS_OF_SERVICE
-UPDATE `user_term` ut
-INNER JOIN `term` old_t ON ut.`term_id` = old_t.`term_id` AND old_t.`term_name` = 'NONE'
-INNER JOIN `term` new_t ON new_t.`term_name` = 'TERMS_OF_SERVICE'
-SET ut.`term_id` = new_t.`term_id`;
+-- Drop placeholder NONE consents without rewriting them as TERMS_OF_SERVICE
+-- (NONE was a seed placeholder; there is no proof it meant terms-of-service)
+DELETE ut FROM `user_term` ut
+INNER JOIN `term` t ON ut.`term_id` = t.`term_id`
+WHERE t.`term_name` = 'NONE';
 
--- Remove placeholder NONE term
 DELETE FROM `term` WHERE `term_name` = 'NONE';
 
 -- Drop NONE from enum and remove default

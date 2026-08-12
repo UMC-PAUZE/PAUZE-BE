@@ -57,10 +57,13 @@ export interface KakaoSignupRequestDto {
 
 /**
  * Link account.
- * - KAKAO→LOCAL: email + password (new local credentials) required
- * - LOCAL→KAKAO: kakaoAccessToken only (email optional; taken from token). Requires prior email verify.
+ * - KAKAO_TO_LOCAL: email + password (new local credentials) required
+ * - LOCAL_TO_KAKAO: kakaoAccessToken (+ optional email). Requires prior LINK email verify.
  */
+export type LinkDirection = "KAKAO_TO_LOCAL" | "LOCAL_TO_KAKAO";
+
 export interface LinkAccountRequestDto {
+  direction: LinkDirection;
   kakaoAccessToken: string;
   email?: string;
   password?: string;

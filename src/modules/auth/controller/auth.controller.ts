@@ -45,6 +45,7 @@ export class AuthController extends Controller {
   @Get("email/availability")
   @SuccessResponse(200, "OK")
   @Response(400, "Bad Request")
+  @Response(429, "Too Many Requests")
   public async checkEmailAvailability(
     @Query() email: string
   ): Promise<ApiSuccessResponse<EmailAvailabilityResultDto>> {
@@ -59,6 +60,7 @@ export class AuthController extends Controller {
   @Get("nickname/availability")
   @SuccessResponse(200, "OK")
   @Response(400, "Bad Request")
+  @Response(429, "Too Many Requests")
   public async checkNicknameAvailability(
     @Query() nickname: string
   ): Promise<ApiSuccessResponse<NicknameAvailabilityResultDto>> {

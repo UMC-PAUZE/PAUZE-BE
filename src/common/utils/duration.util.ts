@@ -17,5 +17,11 @@ export function parseDurationToSeconds(duration: string): number {
   if (unitSeconds === undefined) {
     throw new Error(`Invalid duration format: ${duration}`);
   }
-  return value * unitSeconds;
+
+  const totalSeconds = value * unitSeconds;
+  if (!Number.isSafeInteger(value) || !Number.isSafeInteger(totalSeconds)) {
+    throw new Error(`Invalid duration format: ${duration}`);
+  }
+
+  return totalSeconds;
 }
