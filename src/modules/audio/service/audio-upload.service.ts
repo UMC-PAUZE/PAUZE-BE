@@ -4,7 +4,6 @@ import {
   uploadObject,
 } from "../../../common/utils/s3.util.js";
 import { AppError } from "../../../common/errors/app.error.js";
-import type { AudioCategoryCode } from "../../../generated/prisma/client.js";
 import type { AudioUploadResult } from "../dto/audio-upload.dto.js";
 import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
 import {
@@ -46,16 +45,7 @@ export class AudioUploadService {
     categoryCode: string;
   }): Promise<AudioUploadResult> {
     const title = normalizeAudioTitle(params.audioTitle);
-    let categoryCode: AudioCategoryCode;
-    try {
-      categoryCode = parseAudioCategoryCode(params.categoryCode);
-    } catch {
-      throw new AppError({
-        code: AUDIO_CODES.AUDIO_FILE_INVALID,
-        message: AUDIO_MESSAGES.AUDIO_FILE_INVALID,
-        statusCode: 400,
-      });
-    }
+    const categoryCode = parseAudioCategoryCode(params.categoryCode);
 
     if (
       !params.audioFile ||

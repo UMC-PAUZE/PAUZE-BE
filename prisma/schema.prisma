@@ -409,14 +409,16 @@ model VisualGuideLock {
 }
 
 model S3CleanupTask {
-  cleanupId    BigInt    @id @default(autoincrement()) @map("cleanup_id")
-  objectKey    String    @unique @db.VarChar(255) @map("object_key")
-  attempts     Int       @default(0)
-  lastError    String?   @db.Text @map("last_error")
-  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  cleanupId     BigInt    @id @default(autoincrement()) @map("cleanup_id")
+  objectKey     String    @unique @db.VarChar(255) @map("object_key")
+  attempts      Int       @default(0)
+  lastError     String?   @db.Text @map("last_error")
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at")
+  lockedUntil   DateTime? @map("locked_until")
+  lockToken     String?   @db.Char(36) @map("lock_token")
+  createdAt     DateTime  @default(now()) @map("created_at")
 
-  @@index([nextAttemptAt])
+  @@index([nextAttemptAt, lockedUntil], map: "s3_cleanup_task_claim_idx")
   @@map("s3_cleanup_task")
 }
 

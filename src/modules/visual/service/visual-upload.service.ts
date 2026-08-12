@@ -47,12 +47,9 @@ export class VisualGuideUploadService {
     }
     const visualFile = params.visualFile;
 
-    return this.repository.withMutationLock(async (repository) => {
-      let uploadedKey: string | null = null;
-      try {
-      const previous = await repository.findCurrent();
-
-      const key = this.storage.buildKey(visualFile.originalname);
+    const key = this.storage.buildKey(visualFile.originalname);
+    let uploadedKey: string | null = null;
+    try {
       const uploaded = await this.storage.upload({
         key,
         body: visualFile.buffer,
@@ -61,22 +58,25 @@ export class VisualGuideUploadService {
       });
       uploadedKey = uploaded.key;
 
-      const created = await repository.saveCurrent({
-        visualId: previous?.visualId,
-        visualKey: uploaded.key,
-        visualUrl: uploaded.url,
-        createdAt: new Date(),
+      return await this.repository.withMutationLock(async (repository) => {
+        const previous = await repository.findCurrent();
+        const created = await repository.saveCurrent({
+          visualId: previous?.visualId,
+          visualKey: uploaded.key,
+          visualUrl: uploaded.url,
+          createdAt: new Date(),
+        });
+
+        if (previous?.visualKey && previous.visualKey !== uploaded.key) {
+          await repository.enqueueCleanup(previous.visualKey);
+        }
+
+        return {
+          visualId: Number(created.visualId),
+          visualUrl: created.visualUrl,
+          createdAt: created.createdAt.toISOString(),
+        };
       });
-
-      if (previous?.visualKey && previous.visualKey !== uploaded.key) {
-        await repository.enqueueCleanup(previous.visualKey);
-      }
-
-      return {
-        visualId: Number(created.visualId),
-        visualUrl: created.visualUrl,
-        createdAt: created.createdAt.toISOString(),
-      };
     } catch (error) {
       if (uploadedKey) {
         try {
@@ -91,8 +91,7 @@ export class VisualGuideUploadService {
         message: VISUAL_MESSAGES.UPLOAD_FAILED,
         statusCode: 500,
       });
-      }
-    });
+    }
   }
 }
 

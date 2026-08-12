@@ -107,6 +107,25 @@ test("Audio Multipart 파일을 S3에 올리고 DB URL을 응답한다", async (
   });
 });
 
+test("잘못된 categoryCode는 INVALID_CATEGORY로 전파한다", async () => {
+  const repository = createRepository();
+  const { storage, uploadedKeys } = createStorage();
+  const service = new AudioUploadService(repository, storage);
+
+  await assert.rejects(
+    service.upload({
+      audioFile,
+      audioTitle: "빗소리",
+      categoryCode: "INVALID",
+    }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === AUDIO_CODES.INVALID_CATEGORY &&
+      error.statusCode === 400,
+  );
+  assert.equal(uploadedKeys.length, 0);
+});
+
 test("잘못된 오디오 파일이면 S3와 DB를 호출하지 않는다", async () => {
   let categoryCalled = false;
   const repository = createRepository({
