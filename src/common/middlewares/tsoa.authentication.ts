@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { JsonWebTokenError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { AppError } from "../errors/app.error.js";
 import { verifyAccessToken } from "../utils/jwt.util.js";
 import {
@@ -40,7 +40,7 @@ export async function expressAuthentication(
   try {
     return verifyAccessToken(token);
   } catch (error) {
-    if (error instanceof JsonWebTokenError) {
+    if (error instanceof jwt.JsonWebTokenError) {
       throw new AppError({
         code: AUTH_CODES.UNAUTHORIZED,
         message: "유효하지 않은 access token입니다.",
