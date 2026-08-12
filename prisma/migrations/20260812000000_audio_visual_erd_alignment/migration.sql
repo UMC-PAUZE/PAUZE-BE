@@ -18,6 +18,6 @@ ON DUPLICATE KEY UPDATE `category_code` = VALUES(`category_code`);
 -- audio_key UNIQUE
 CREATE UNIQUE INDEX `audio_guide_audio_key_key` ON `audio_guide`(`audio_key`);
 
--- visual_guide content, visual_title 제거
-ALTER TABLE `visual_guide` DROP COLUMN `content`;
+-- visual_guide content, visual_title 제거 (최종 ERD: singleton URL/key만 유지)
+ALTER TABLE `visual_guide` DROP COLUMN `visual_content`;
 ALTER TABLE `visual_guide` DROP COLUMN `visual_title`;

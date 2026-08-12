@@ -108,7 +108,12 @@ export class AudioController extends Controller {
    */
   @Get("/")
   @SuccessResponse(200, "OK")
-  @Response<ApiErrorResponse>(400, "Bad Request")
+  @Response<ApiErrorResponse>(400, "Bad Request", {
+    isSuccess: false,
+    code: AUDIO_CODES.BAD_REQUEST,
+    message: AUDIO_MESSAGES.INVALID_PAGINATION,
+    result: null,
+  })
   @Response(401, "Unauthorized")
   @Response(500, "Internal Server Error")
   public async getAudioGuides(
@@ -138,7 +143,12 @@ export class AudioController extends Controller {
   @Get("likes")
   @Security("bearer")
   @SuccessResponse(200, "OK")
-  @Response<ApiErrorResponse>(400, "Bad Request")
+  @Response<ApiErrorResponse>(400, "Bad Request", {
+    isSuccess: false,
+    code: AUDIO_CODES.BAD_REQUEST,
+    message: AUDIO_MESSAGES.INVALID_PAGINATION,
+    result: null,
+  })
   @Response(401, "Unauthorized")
   @Response(500, "Internal Server Error")
   public async getLikedAudioGuides(
