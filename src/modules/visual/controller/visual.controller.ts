@@ -1,7 +1,6 @@
 import type { Request as ExpressRequest } from "express";
 import {
     Controller,
-    Delete,
     FormField,
     Get,
     Post,
@@ -19,7 +18,7 @@ import type {
     ApiErrorResponse,
     ApiSuccessResponse,
 } from "../../../common/responses/response.js";
-import type { VisualGuideDeleteResult, VisualGuideFileResponse, VisualGuideUploadResult } from "../dto/visual.dto.js";
+import type { VisualGuideFileResponse, VisualGuideUploadResult } from "../dto/visual.dto.js";
 import { VISUAL_CODES, VISUAL_MESSAGES } from "../errors/visual.errors.js";
 import { visualGuideService } from "../service/visual.service.js"
 import { visualGuideUploadService } from "../service/visual-upload.service.js";
@@ -42,17 +41,11 @@ export class VisualController extends Controller {
         @Request() request: ExpressRequest,
         /** 업로드할 시각 안정용 오디오 파일. mp3, wav, m4a, aac, ogg, flac 형식을 지원합니다. */
         @UploadedFile() visualFile: Express.Multer.File,
-        /** 시각 안정 가이드 제목. 1자 이상 50자 이하 */
-        @FormField() visualTitle: string,
-        /** 선택 설명. 최대 100자 */
-        @FormField() content?: string,
     ): Promise<ApiSuccessResponse<VisualGuideUploadResult>> {
         requireAdmin(request);
 
         const result = await visualGuideUploadService.upload({
             visualFile,
-            visualTitle,
-            content,
         });
         return success(
             VISUAL_CODES.UPLOAD_SUCCESS,
@@ -80,25 +73,5 @@ export class VisualController extends Controller {
             result,
         )
 
-    }
-
-
-    /**
-     * 시각 안정 오디오를 DB에서 삭제한 뒤 visualKey로 S3 객체 삭제를 시도합니다.
-     * DB 삭제 이후의 S3 정리 실패는 성공 응답에 영향을 주지 않습니다.
-     */
-    @Delete("file")
-    @Security("bearer")
-    @SuccessResponse(200, "OK")
-    @Response<ApiErrorResponse>(401, "Unauthorized")
-    @Response<ApiErrorResponse>(403, "Forbidden")
-    @Response<ApiErrorResponse>(404, "Not Found")
-    @Response<ApiErrorResponse>(500, "Internal Server Error")
-    public async deleteGuide(
-        @Request() request: ExpressRequest,
-    ): Promise<ApiSuccessResponse<VisualGuideDeleteResult>> {
-        requireAdmin(request);
-        const result = await visualGuideService.deleteVisualGuide();
-        return success(VISUAL_CODES.DELETE_SUCCESS, VISUAL_MESSAGES.DELETE_SUCCESS, result);
     }
 }

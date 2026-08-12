@@ -14,6 +14,7 @@ import {
   Tags,
 } from "tsoa";
 import { AppError } from "../../../common/errors/app.error.js";
+import type { AudioCategoryCode } from "../../../generated/prisma/client.js";
 import { requireAdmin } from "../../../common/utils/authorization.util.js";
 import { success } from "../../../common/responses/response.js";
 import type {
@@ -25,7 +26,6 @@ import {
   AUTH_MESSAGES,
 } from "../../auth/errors/auth.errors.js";
 import type {
-  AudioCategoryCode,
   AudioCursorPagination,
   AudioDeleteResult,
   AudioGuideCursorPage,
@@ -33,7 +33,7 @@ import type {
 } from "../dto/audio.dto.js";
 import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
 import { audioService } from "../service/audio.service.js";
-import { parseAudioCategoryCode } from "../utils/audio-category.util.js";
+import { parseOptionalAudioCategoryCode } from "../utils/audio-category.util.js";
 
 function parseAudioId(audioId: string): bigint {
   if (!/^\d+$/.test(audioId)) {
@@ -102,7 +102,8 @@ function parsePagination(
 @Tags("Audio Guides")
 export class AudioController extends Controller {
   /**
-   * 청각 안정 오디오 가이드 전체 목록을 최신순으로 조회합니다.
+   * 청각 안정 오디오 가이드 목록을 최신순으로 조회합니다.
+   * categoryCode를 생략하면 전체를, 지정하면 해당 카테고리만 조회합니다.
    * 로그인 토큰은 선택 사항이며, 인증된 경우 각 오디오의 사용자 좋아요 상태를 함께 반환합니다.
    */
   @Get("/")
@@ -110,8 +111,10 @@ export class AudioController extends Controller {
   @Response<ApiErrorResponse>(400, "Bad Request")
   @Response(401, "Unauthorized")
   @Response(500, "Internal Server Error")
-  public async getAllGuides(
+  public async getAudioGuides(
     @Request() request: ExpressRequest,
+    /** 조회할 카테고리 코드. NATURE_SOUND, ASMR, NOISE 중 하나입니다. 생략 시 전체 조회입니다. */
+    @Query() categoryCode?: AudioCategoryCode,
     /** 이전 응답의 nextCursor. 첫 조회에서는 생략합니다. */
     @Query() cursor?: string,
     /** 한 번에 조회할 개수. 기본값 8, 최대 50입니다. */
@@ -120,40 +123,11 @@ export class AudioController extends Controller {
     const result = await audioService.getAudioGuides(
       parsePagination(cursor, size),
       request.user?.uid,
+      parseOptionalAudioCategoryCode(categoryCode),
     );
     return success(
       AUDIO_CODES.GET_AUDIO_GUIDES_SUCCESS,
       AUDIO_MESSAGES.GET_AUDIO_GUIDES_SUCCESS,
-      result,
-    );
-  }
-
-  /**
-   * 지정한 카테고리에 속한 청각 안정 오디오 가이드를 최신순으로 조회합니다.
-   * 로그인 토큰은 선택 사항이며, 인증된 경우 각 오디오의 사용자 좋아요 상태를 함께 반환합니다.
-   */
-  @Get("categories")
-  @SuccessResponse(200, "OK")
-  @Response(400, "Bad Request")
-  @Response(401, "Unauthorized")
-  @Response(500, "Internal Server Error")
-  public async getAudioGuidesByCategory(
-    @Request() request: ExpressRequest,
-    /** 조회할 카테고리 코드. NATURE_SOUND, ASMR, NOISE 중 하나입니다. */
-    @Query() categoryCode: AudioCategoryCode,
-    /** 이전 응답의 nextCursor. 첫 조회에서는 생략합니다. */
-    @Query() cursor?: string,
-    /** 한 번에 조회할 개수. 기본값 8, 최대 50입니다. */
-    @Query() size?: number,
-  ): Promise<ApiSuccessResponse<AudioGuideCursorPage>> {
-    const result = await audioService.getAudioGuidesByCategory(
-      parseAudioCategoryCode(categoryCode),
-      parsePagination(cursor, size),
-      request.user?.uid,
-    );
-    return success(
-      AUDIO_CODES.GET_AUDIO_GUIDES_BY_CATEGORY_SUCCESS,
-      AUDIO_MESSAGES.GET_AUDIO_GUIDES_BY_CATEGORY_SUCCESS,
       result,
     );
   }

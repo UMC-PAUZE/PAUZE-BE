@@ -1,18 +1,12 @@
-export enum AudioCategoryCode {
-  NATURE_SOUND = "NATURE_SOUND",
-  ASMR = "ASMR",
-  NOISE = "NOISE",
-}
+import type { AudioCategoryCode } from "../../../generated/prisma/client.js";
+
+export type { AudioCategoryCode };
 
 export interface AudioGuideListItem {
   /** 오디오 가이드 식별자 */
   audioId: number;
   /** 오디오 제목 */
   audioTitle: string;
-  /** 카테고리 식별자 */
-  categoryId: number;
-  /** 화면에 표시할 카테고리 이름 */
-  categoryName: string;
   /** 오디오 카테고리 코드 */
   categoryCode: AudioCategoryCode;
   /** 오디오 재생 및 오프라인 다운로드에 사용할 URL */

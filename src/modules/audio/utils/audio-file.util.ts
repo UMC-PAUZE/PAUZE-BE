@@ -39,12 +39,6 @@ export function isAllowedAudioFile(file: {
   );
 }
 
-export function parseAudioCategoryId(value: string): bigint | null {
-  if (!/^\d+$/.test(value)) return null;
-  const parsed = BigInt(value);
-  return parsed > 0n ? parsed : null;
-}
-
 export function normalizeAudioTitle(value: string): string | null {
   const title = value.trim();
   return title.length >= 1 && title.length <= 50 ? title : null;

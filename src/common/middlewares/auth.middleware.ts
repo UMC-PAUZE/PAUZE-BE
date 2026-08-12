@@ -33,11 +33,7 @@ function isOptionalAudioRequest(method: string, path: string): boolean {
   if (method !== "GET") {
     return false;
   }
-  return (
-    path === "/audio-guides" ||
-    path === "/audio-guides/" ||
-    path === "/audio-guides/categories"
-  );
+  return path === "/audio-guides" || path === "/audio-guides/";
 }
 
 function isOptionalAuthRequest(req: Request): boolean {

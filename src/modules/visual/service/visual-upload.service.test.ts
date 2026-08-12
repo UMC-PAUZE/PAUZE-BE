@@ -58,7 +58,6 @@ test("백엔드가 생성한 visualKey로 S3에 올리고 DB에 저장한다", a
       return {
         visualId: 1n,
         visualKey: params.visualKey,
-        visualTitle: params.visualTitle,
         visualUrl: params.visualUrl,
         createdAt: new Date("2026-08-11T06:30:00.000Z"),
       };
@@ -69,8 +68,6 @@ test("백엔드가 생성한 visualKey로 S3에 올리고 DB에 저장한다", a
 
   const result = await service.upload({
     visualFile,
-    visualTitle: "명상",
-    content: "안정 가이드",
   });
 
   assert.deepEqual(uploadedKeys, ["visual-guides/test.mp3"]);
@@ -78,7 +75,6 @@ test("백엔드가 생성한 visualKey로 S3에 올리고 DB에 저장한다", a
   assert.equal(saved?.visualUrl, "https://cdn.test/visual-guides/test.mp3");
   assert.deepEqual(result, {
     visualId: 1,
-    visualTitle: "명상",
     visualUrl: "https://cdn.test/visual-guides/test.mp3",
     createdAt: "2026-08-11T06:30:00.000Z",
   });
@@ -101,7 +97,6 @@ test("기존 Visual이 있으면 DB를 교체한 뒤 이전 객체 정리 작업
       return {
         visualId: 1n,
         visualKey: params.visualKey,
-        visualTitle: params.visualTitle,
         visualUrl: params.visualUrl,
         createdAt: new Date("2026-08-11T06:30:00.000Z"),
       };
@@ -122,7 +117,7 @@ test("기존 Visual이 있으면 DB를 교체한 뒤 이전 객체 정리 작업
   };
   const service = new VisualGuideUploadService(repository, storage);
 
-  await service.upload({ visualFile, visualTitle: "명상" });
+  await service.upload({ visualFile });
 
   assert.equal(savedVisualId, 1n);
   assert.deepEqual(calls, [
@@ -149,7 +144,7 @@ test("Visual DB 저장 실패 시 이전 객체는 유지하고 새 S3 객체만
   const service = new VisualGuideUploadService(repository, storage);
 
   await assert.rejects(
-    service.upload({ visualFile, visualTitle: "명상" }),
+    service.upload({ visualFile }),
     (error: unknown) =>
       error instanceof AppError &&
       error.code === VISUAL_CODES.UPLOAD_FAILED &&

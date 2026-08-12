@@ -4,6 +4,7 @@ import {
   uploadObject,
 } from "../../../common/utils/s3.util.js";
 import { AppError } from "../../../common/errors/app.error.js";
+import type { AudioCategoryCode } from "../../../generated/prisma/client.js";
 import type { AudioUploadResult } from "../dto/audio-upload.dto.js";
 import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
 import {
@@ -13,8 +14,8 @@ import {
 import {
   isAllowedAudioFile,
   normalizeAudioTitle,
-  parseAudioCategoryId,
 } from "../utils/audio-file.util.js";
+import { parseAudioCategoryCode } from "../utils/audio-category.util.js";
 
 export interface AudioObjectStorage {
   buildKey(originalFilename: string): string;
@@ -42,15 +43,24 @@ export class AudioUploadService {
   async upload(params: {
     audioFile?: Express.Multer.File;
     audioTitle: string;
-    categoryId: string;
+    categoryCode: string;
   }): Promise<AudioUploadResult> {
     const title = normalizeAudioTitle(params.audioTitle);
-    const categoryId = parseAudioCategoryId(params.categoryId);
+    let categoryCode: AudioCategoryCode;
+    try {
+      categoryCode = parseAudioCategoryCode(params.categoryCode);
+    } catch {
+      throw new AppError({
+        code: AUDIO_CODES.AUDIO_FILE_INVALID,
+        message: AUDIO_MESSAGES.AUDIO_FILE_INVALID,
+        statusCode: 400,
+      });
+    }
+
     if (
       !params.audioFile ||
       !isAllowedAudioFile(params.audioFile) ||
-      !title ||
-      !categoryId
+      !title
     ) {
       throw new AppError({
         code: AUDIO_CODES.AUDIO_FILE_INVALID,
@@ -61,7 +71,8 @@ export class AudioUploadService {
 
     let uploadedKey: string | null = null;
     try {
-      if (!(await this.repository.categoryExists(categoryId))) {
+      const category = await this.repository.findCategoryByCode(categoryCode);
+      if (!category) {
         throw new AppError({
           code: AUDIO_CODES.AUDIO_CATEGORY_NOT_FOUND,
           message: AUDIO_MESSAGES.AUDIO_CATEGORY_NOT_FOUND,
@@ -80,7 +91,7 @@ export class AudioUploadService {
 
       const created = await this.repository.create({
         audioTitle: title,
-        categoryId,
+        categoryId: category.categoryId,
         audioKey: uploaded.key,
         audioUrl: uploaded.url,
         createdAt: new Date(),
@@ -89,7 +100,7 @@ export class AudioUploadService {
       return {
         audioId: Number(created.audioId),
         audioTitle: created.audioTitle,
-        categoryId: Number(created.categoryId),
+        categoryCode: created.categoryCode,
         audioUrl: created.audioUrl,
         createdAt: created.createdAt.toISOString(),
       };

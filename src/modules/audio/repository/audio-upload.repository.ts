@@ -1,5 +1,5 @@
 import { prisma } from "../../../db.config.js";
-import type { PrismaClient } from "../../../generated/prisma/client.js";
+import type { AudioCategoryCode, PrismaClient } from "../../../generated/prisma/client.js";
 
 export interface AudioUploadCreateParams {
   audioTitle: string;
@@ -12,40 +12,55 @@ export interface AudioUploadCreateParams {
 export interface AudioUploadCreatedRow {
   audioId: bigint;
   audioTitle: string;
-  categoryId: bigint;
+  categoryCode: AudioCategoryCode;
   audioUrl: string;
   createdAt: Date;
 }
 
 export interface AudioUploadRepositoryContract {
-  categoryExists(categoryId: bigint): Promise<boolean>;
+  findCategoryByCode(
+    categoryCode: AudioCategoryCode,
+  ): Promise<{ categoryId: bigint } | null>;
   create(params: AudioUploadCreateParams): Promise<AudioUploadCreatedRow>;
 }
 
 export class AudioUploadRepository implements AudioUploadRepositoryContract {
   constructor(private readonly db: PrismaClient) {}
 
-  async categoryExists(categoryId: bigint): Promise<boolean> {
-    const category = await this.db.audioCategory.findUnique({
-      where: { categoryId },
+  async findCategoryByCode(
+    categoryCode: AudioCategoryCode,
+  ): Promise<{ categoryId: bigint } | null> {
+    return this.db.audioCategory.findUnique({
+      where: { categoryCode },
       select: { categoryId: true },
     });
-    return category !== null;
   }
 
   async create(params: AudioUploadCreateParams): Promise<AudioUploadCreatedRow> {
-    return this.db.audioGuide.create({
+    const created = await this.db.audioGuide.create({
       data: {
         ...params,
       },
       select: {
         audioId: true,
         audioTitle: true,
-        categoryId: true,
         audioUrl: true,
         createdAt: true,
+        category: {
+          select: {
+            categoryCode: true,
+          },
+        },
       },
     });
+
+    return {
+      audioId: created.audioId,
+      audioTitle: created.audioTitle,
+      categoryCode: created.category.categoryCode,
+      audioUrl: created.audioUrl,
+      createdAt: created.createdAt,
+    };
   }
 }
 

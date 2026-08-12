@@ -4,7 +4,6 @@ import {
   AUDIO_FILE_MAX_BYTES,
   isAllowedAudioFile,
   normalizeAudioTitle,
-  parseAudioCategoryId,
 } from "./audio-file.util.js";
 
 test("허용된 오디오 파일 형식을 검증한다", () => {
@@ -34,10 +33,7 @@ test("허용된 오디오 파일 형식을 검증한다", () => {
   );
 });
 
-test("오디오 제목과 카테고리 ID를 정규화한다", () => {
+test("오디오 제목을 정규화한다", () => {
   assert.equal(normalizeAudioTitle("  빗소리  "), "빗소리");
   assert.equal(normalizeAudioTitle("   "), null);
-  assert.equal(parseAudioCategoryId("1"), 1n);
-  assert.equal(parseAudioCategoryId("0"), null);
-  assert.equal(parseAudioCategoryId("invalid"), null);
 });

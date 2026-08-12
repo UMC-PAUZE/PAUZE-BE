@@ -11,6 +11,7 @@ import {
   Tags,
   UploadedFile,
 } from "tsoa";
+import type { AudioCategoryCode } from "../../../generated/prisma/client.js";
 import { requireAdmin } from "../../../common/utils/authorization.util.js";
 import { success } from "../../../common/responses/response.js";
 import type {
@@ -42,15 +43,15 @@ export class AudioUploadController extends Controller {
     @UploadedFile() audioFile: Express.Multer.File,
     /** 오디오 제목. 1자 이상 50자 이하입니다. */
     @FormField() audioTitle: string,
-    /** audio_category의 카테고리 식별자입니다. */
-    @FormField() categoryId: string,
+    /** 오디오 카테고리 코드. NATURE_SOUND, ASMR, NOISE 중 하나입니다. */
+    @FormField() categoryCode: AudioCategoryCode,
   ): Promise<ApiSuccessResponse<AudioUploadResult>> {
     requireAdmin(request);
 
     const result = await audioUploadService.upload({
       audioFile,
       audioTitle,
-      categoryId,
+      categoryCode,
     });
     return success(
       AUDIO_CODES.UPLOAD_SUCCESS,

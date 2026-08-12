@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AppError } from "../../../common/errors/app.error.js";
+import { AudioCategoryCode } from "../../../generated/prisma/client.js";
 import { AUDIO_CODES } from "../errors/audio.errors.js";
 import type {
   AudioUploadCreateParams,
@@ -41,14 +42,14 @@ function createRepository(
   overrides: Partial<AudioUploadRepositoryContract> = {},
 ): AudioUploadRepositoryContract {
   return {
-    async categoryExists() {
-      return true;
+    async findCategoryByCode() {
+      return { categoryId: 1n };
     },
     async create(params: AudioUploadCreateParams) {
       return {
         audioId: 1n,
         audioTitle: params.audioTitle,
-        categoryId: params.categoryId,
+        categoryCode: AudioCategoryCode.NATURE_SOUND,
         audioUrl: params.audioUrl,
         createdAt: params.createdAt,
       };
@@ -60,16 +61,16 @@ function createRepository(
 test("Audio Multipart 파일을 S3에 올리고 DB URL을 응답한다", async () => {
   let createdInput: unknown;
   const repository = createRepository({
-    async categoryExists(categoryId: bigint) {
-      assert.equal(categoryId, 1n);
-      return true;
+    async findCategoryByCode(categoryCode) {
+      assert.equal(categoryCode, AudioCategoryCode.NATURE_SOUND);
+      return { categoryId: 1n };
     },
     async create(params) {
       createdInput = params;
       return {
         audioId: 4n,
         audioTitle: "빗소리",
-        categoryId: 1n,
+        categoryCode: AudioCategoryCode.NATURE_SOUND,
         audioUrl: "https://cdn.test/audio-guides/test.mp3",
         createdAt: new Date("2026-08-11T06:30:00.000Z"),
       };
@@ -81,7 +82,7 @@ test("Audio Multipart 파일을 S3에 올리고 DB URL을 응답한다", async (
   const result = await service.upload({
     audioFile,
     audioTitle: "  빗소리  ",
-    categoryId: "1",
+    categoryCode: "NATURE_SOUND",
   });
 
   assert.deepEqual(uploadedKeys, ["audio-guides/test.mp3"]);
@@ -100,7 +101,7 @@ test("Audio Multipart 파일을 S3에 올리고 DB URL을 응답한다", async (
   assert.deepEqual(result, {
     audioId: 4,
     audioTitle: "빗소리",
-    categoryId: 1,
+    categoryCode: "NATURE_SOUND",
     audioUrl: "https://cdn.test/audio-guides/test.mp3",
     createdAt: "2026-08-11T06:30:00.000Z",
   });
@@ -109,9 +110,9 @@ test("Audio Multipart 파일을 S3에 올리고 DB URL을 응답한다", async (
 test("잘못된 오디오 파일이면 S3와 DB를 호출하지 않는다", async () => {
   let categoryCalled = false;
   const repository = createRepository({
-    async categoryExists() {
+    async findCategoryByCode() {
       categoryCalled = true;
-      return true;
+      return { categoryId: 1n };
     },
   });
   const { storage, uploadedKeys } = createStorage();
@@ -121,7 +122,7 @@ test("잘못된 오디오 파일이면 S3와 DB를 호출하지 않는다", asyn
     service.upload({
       audioFile: { ...audioFile, originalname: "image.jpg", mimetype: "image/jpeg" },
       audioTitle: "잘못된 파일",
-      categoryId: "1",
+      categoryCode: "NATURE_SOUND",
     }),
     (error: unknown) =>
       error instanceof AppError &&
@@ -134,15 +135,15 @@ test("잘못된 오디오 파일이면 S3와 DB를 호출하지 않는다", asyn
 
 test("카테고리가 없으면 S3를 호출하지 않는다", async () => {
   const repository = createRepository({
-    async categoryExists() {
-      return false;
+    async findCategoryByCode() {
+      return null;
     },
   });
   const { storage, uploadedKeys } = createStorage();
   const service = new AudioUploadService(repository, storage);
 
   await assert.rejects(
-    service.upload({ audioFile, audioTitle: "빗소리", categoryId: "999" }),
+    service.upload({ audioFile, audioTitle: "빗소리", categoryCode: "NOISE" }),
     (error: unknown) =>
       error instanceof AppError &&
       error.code === AUDIO_CODES.AUDIO_CATEGORY_NOT_FOUND &&
@@ -153,8 +154,8 @@ test("카테고리가 없으면 S3를 호출하지 않는다", async () => {
 
 test("DB 저장이 실패하면 업로드한 S3 객체를 삭제한다", async () => {
   const repository = createRepository({
-    async categoryExists() {
-      return true;
+    async findCategoryByCode() {
+      return { categoryId: 1n };
     },
     async create() {
       throw new Error("DB failed");
@@ -164,7 +165,7 @@ test("DB 저장이 실패하면 업로드한 S3 객체를 삭제한다", async (
   const service = new AudioUploadService(repository, storage);
 
   await assert.rejects(
-    service.upload({ audioFile, audioTitle: "빗소리", categoryId: "1" }),
+    service.upload({ audioFile, audioTitle: "빗소리", categoryCode: "NATURE_SOUND" }),
     (error: unknown) =>
       error instanceof AppError &&
       error.code === AUDIO_CODES.UPLOAD_FAILED &&

@@ -13,9 +13,9 @@ enum Role {
 }
 
 enum AudioCategoryCode {
-  NATURE_SOUND
-  ASMR
-  NOISE
+  NATURE_SOUND @map("자연소리")
+  ASMR         @map("ASMR")
+  NOISE        @map("노이즈")
 }
 
 enum SocialType {
@@ -246,7 +246,7 @@ model AudioGuide {
   categoryId BigInt    @map("category_id")
   audioTitle String    @db.VarChar(50) @map("audio_title")
   audioUrl   String    @db.Text @map("audio_url")
-  audioKey   String    @db.VarChar(255) @map("audio_key")
+  audioKey   String    @unique @db.VarChar(255) @map("audio_key")
   createdAt  DateTime  @map("created_at")
   updatedAt  DateTime? @map("updated_at")
 
@@ -380,8 +380,6 @@ model ReportInsight {
 model VisualGuide {
   visualId      BigInt    @id @default(autoincrement()) @map("visual_id")
   singletonKey  Int       @default(1) @unique @map("singleton_key")
-  visualTitle   String    @db.VarChar(50) @map("visual_title")
-  content       String?   @db.VarChar(100)
   visualUrl     String    @db.Text @map("visual_url")
   visualKey     String    @unique @db.VarChar(255) @map("visual_key")
   createdAt     DateTime  @map("created_at")

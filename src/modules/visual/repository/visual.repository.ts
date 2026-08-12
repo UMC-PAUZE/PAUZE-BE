@@ -28,8 +28,6 @@ export class VisualGuideRepository {
     async saveCurrent(params: {
         visualId?: bigint;
         visualKey: string;
-        visualTitle: string;
-        content: string | null;
         visualUrl: string;
         createdAt: Date;
     }) {
@@ -37,7 +35,6 @@ export class VisualGuideRepository {
         const select = {
             visualId: true,
             visualKey: true,
-            visualTitle: true,
             visualUrl: true,
             createdAt: true,
         } as const;
@@ -56,13 +53,6 @@ export class VisualGuideRepository {
             update: {},
             create: { objectKey },
         });
-    }
-
-    async deleteIfCurrent(visualId: bigint, visualKey: string): Promise<boolean> {
-        const result = await this.db.visualGuide.deleteMany({
-            where: { visualId, visualKey, singletonKey: 1 },
-        });
-        return result.count === 1;
     }
 }
 

@@ -37,18 +37,8 @@ export class VisualGuideUploadService {
 
   async upload(params: {
     visualFile?: Express.Multer.File;
-    visualTitle: string;
-    content?: string;
   }): Promise<VisualGuideUploadResult> {
-    const visualTitle = params.visualTitle.trim();
-    const content = params.content?.trim() || null;
-    if (
-      !params.visualFile ||
-      !isAllowedAudioFile(params.visualFile) ||
-      visualTitle.length < 1 ||
-      visualTitle.length > 50 ||
-      (content !== null && content.length > 100)
-    ) {
+    if (!params.visualFile || !isAllowedAudioFile(params.visualFile)) {
       throw new AppError({
         code: VISUAL_CODES.BAD_REQUEST,
         message: VISUAL_MESSAGES.BAD_REQUEST,
@@ -74,8 +64,6 @@ export class VisualGuideUploadService {
       const created = await repository.saveCurrent({
         visualId: previous?.visualId,
         visualKey: uploaded.key,
-        visualTitle,
-        content,
         visualUrl: uploaded.url,
         createdAt: new Date(),
       });
@@ -86,7 +74,6 @@ export class VisualGuideUploadService {
 
       return {
         visualId: Number(created.visualId),
-        visualTitle: created.visualTitle,
         visualUrl: created.visualUrl,
         createdAt: created.createdAt.toISOString(),
       };

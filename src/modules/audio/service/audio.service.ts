@@ -1,14 +1,13 @@
 import { AppError } from "../../../common/errors/app.error.js";
 import { deleteObject } from "../../../common/utils/s3.util.js";
+import type { AudioCategoryCode } from "../../../generated/prisma/client.js";
 import type {
   AudioDeleteResult,
-  AudioCategoryCode,
   AudioCursorPagination,
   AudioGuideCursorPage,
   AudioGuideListItem,
   AudioLikeToggleResult,
 } from "../dto/audio.dto.js";
-import { AudioCategoryCode as AudioCategoryCodeValue } from "../dto/audio.dto.js";
 import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
 import {
   type AudioGuideListRow,
@@ -19,12 +18,6 @@ import {
   type AudioLikeRepository,
   audioLikeRepository,
 } from "../repository/audio-like.repository.js";
-
-const AUDIO_CATEGORY_NAMES: Record<AudioCategoryCodeValue, string> = {
-  [AudioCategoryCodeValue.NATURE_SOUND]: "자연의 소리", //categoryCode: "NATURE_SOUND"
-  [AudioCategoryCodeValue.ASMR]: "ASMR", //categoryCode: "ASMR"
-  [AudioCategoryCodeValue.NOISE]: "노이즈", //categoryCode: "NOISE"
-};
 
 export class AudioService {
   constructor(
@@ -37,34 +30,16 @@ export class AudioService {
   async getAudioGuides(
     pagination: AudioCursorPagination,
     userId?: string,
+    categoryCode?: AudioCategoryCode,
   ): Promise<AudioGuideCursorPage> {
     try {
-      const audioList = await this.audioGuideRepository.findMany(
-        pagination,
-        userId,
-      );
-      return this.buildPage(audioList, pagination, (audio) => audio.audioId);
-    } catch {
-      throw new AppError({
-        code: AUDIO_CODES.AUDIO_LIST_FAILED,
-        message: AUDIO_MESSAGES.AUDIO_LIST_FAILED,
-        statusCode: 500,
-      });
-    }
-  }
-
-  async getAudioGuidesByCategory(
-    categoryCode: AudioCategoryCode,
-    pagination: AudioCursorPagination,
-    userId?: string,
-  ): Promise<AudioGuideCursorPage> {
-    try {
-      const audioList =
-        await this.audioGuideRepository.findManyByCategoryCode(
-          categoryCode,
-          pagination,
-          userId,
-        );
+      const audioList = categoryCode
+        ? await this.audioGuideRepository.findManyByCategoryCode(
+            categoryCode,
+            pagination,
+            userId,
+          )
+        : await this.audioGuideRepository.findMany(pagination, userId);
       return this.buildPage(audioList, pagination, (audio) => audio.audioId);
     } catch {
       throw new AppError({
@@ -177,12 +152,7 @@ export class AudioService {
     return {
       audioId: Number(audio.audioId),
       audioTitle: audio.audioTitle,
-      categoryId: Number(audio.categoryId),
-      categoryName:
-        AUDIO_CATEGORY_NAMES[
-          audio.category.categoryCode as AudioCategoryCodeValue
-        ],
-      categoryCode: audio.category.categoryCode as AudioCategoryCodeValue,
+      categoryCode: audio.category.categoryCode,
       audioUrl: audio.audioUrl,
       isLiked: (audio.likedBy?.length ?? 0) > 0,
     };

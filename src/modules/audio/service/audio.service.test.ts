@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
-import { AudioCategoryCode as PrismaAudioCategoryCode } from "../../../generated/prisma/enums.js";
+import { AudioCategoryCode } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../common/errors/app.error.js";
-import { AudioCategoryCode } from "../dto/audio.dto.js";
 import { AUDIO_CODES } from "../errors/audio.errors.js";
 import type {
   AudioGuideListRow,
@@ -19,7 +18,7 @@ const audioRow: AudioGuideListRow = {
   audioKey: "audio/rain.mp3",
   categoryId: 10n,
   category: {
-    categoryCode: PrismaAudioCategoryCode.NATURE_SOUND,
+    categoryCode: AudioCategoryCode.NATURE_SOUND,
   },
 };
 
@@ -76,8 +75,6 @@ test("비로그인 목록은 파일 URL과 좋아요 상태를 반환한다", as
       {
         audioId: 1,
         audioTitle: "빗소리",
-        categoryId: 10,
-        categoryName: "자연의 소리",
         categoryCode: "NATURE_SOUND",
         audioUrl: "https://example.com/rain.mp3",
         isLiked: false,
@@ -120,10 +117,10 @@ test("카테고리 코드가 있으면 카테고리 조건으로 목록을 조�
     },
   });
 
-  const result = await service.getAudioGuidesByCategory(
-    AudioCategoryCode.ASMR,
+  const result = await service.getAudioGuides(
     { cursor: 10n, size: 8 },
     "user-uid",
+    AudioCategoryCode.ASMR,
   );
 
   assert.deepEqual(result, { content: [], nextCursor: null, hasNext: false });

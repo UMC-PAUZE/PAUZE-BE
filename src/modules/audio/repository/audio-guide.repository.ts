@@ -1,10 +1,6 @@
 import { prisma } from "../../../db.config.js";
-import type { PrismaClient } from "../../../generated/prisma/client.js";
-import type { AudioCategoryCode as PrismaAudioCategoryCode } from "../../../generated/prisma/enums.js";
-import type {
-  AudioCategoryCode,
-  AudioCursorPagination,
-} from "../dto/audio.dto.js";
+import type { AudioCategoryCode, PrismaClient } from "../../../generated/prisma/client.js";
+import type { AudioCursorPagination } from "../dto/audio.dto.js";
 
 export type AudioGuideListRow = {
   audioId: bigint;
@@ -13,7 +9,7 @@ export type AudioGuideListRow = {
   audioKey: string;
   categoryId: bigint;
   category: {
-    categoryCode: PrismaAudioCategoryCode;
+    categoryCode: AudioCategoryCode;
   };
   likedBy?: { likedId: bigint }[];
 };
