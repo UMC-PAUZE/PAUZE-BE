@@ -13,7 +13,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/visual-guides"
 ];
 
-const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts", "/audio-guides"];
+const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts"];
 
 function matchesPathPrefix(path: string, prefixes: string[]): boolean {
   return prefixes.some(
@@ -27,6 +27,19 @@ function isPublicPath(path: string): boolean {
 
 function isOptionalAuthPath(path: string): boolean {
   return matchesPathPrefix(path, OPTIONAL_AUTH_PATH_PREFIXES);
+}
+
+function isOptionalAudioRequest(method: string, path: string): boolean {
+  if (method !== "GET") {
+    return false;
+  }
+  return path === "/audio-guides" || path === "/audio-guides/";
+}
+
+function isOptionalAuthRequest(req: Request): boolean {
+  return (
+    isOptionalAudioRequest(req.method, req.path) || isOptionalAuthPath(req.path)
+  );
 }
 
 function extractBearerToken(authorization: string | undefined): string | null {
@@ -56,7 +69,7 @@ export function authenticate(
     return;
   }
 
-  if (isOptionalAuthPath(req.path)) {
+  if (isOptionalAuthRequest(req)) {
     const token = extractBearerToken(req.headers.authorization);
     if (!token) {
       next();

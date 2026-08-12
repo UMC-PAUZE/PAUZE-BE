@@ -30,6 +30,7 @@ export const AUTH_CODES = {
   ME_SUCCESS: "AUTH_ME_SUCCESS",
   ME_NOT_FOUND: "AUTH_ME_NOT_FOUND_404",
   UNAUTHORIZED: "AUTH_UNAUTHORIZED_401",
+  FORBIDDEN: "FORBIDDEN_403",
 } as const;
 
 export const AUTH_MESSAGES = {
@@ -69,4 +70,5 @@ export const AUTH_MESSAGES = {
   ME_SUCCESS: "사용자 정보 조회에 성공했습니다.",
   ME_NOT_FOUND: "사용자를 찾을 수 없습니다.",
   UNAUTHORIZED: "인증이 필요합니다.",
+  FORBIDDEN: "관리자 권한이 필요합니다.",
 } as const;

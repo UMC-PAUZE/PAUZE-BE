@@ -15,6 +15,15 @@ import {
   USER_CODES,
   USER_MESSAGES,
 } from "./modules/users/errors/user.errors.js";
+import {
+  AUDIO_CODES,
+  AUDIO_MESSAGES,
+} from "./modules/audio/errors/audio.errors.js";
+import {
+  VISUAL_CODES,
+  VISUAL_MESSAGES,
+} from "./modules/visual/errors/visual.errors.js";
+import { startS3CleanupWorker } from "./common/services/s3-cleanup.worker.js";
 
 dotenv.config();
 
@@ -44,11 +53,37 @@ const swaggerFile = JSON.parse(
   fs.readFileSync(path.resolve("dist/swagger.json"), "utf8")
 );
 
+const audioCategoryCodeSchema = {
+  type: "string",
+  enum: ["NATURE_SOUND", "ASMR", "NOISE"],
+};
+
 const optionalBearerSecurity = [{ bearer: [] }, {}];
-for (const path of ["/audio-guides", "/audio-guides/categories"]) {
-  if (swaggerFile.paths?.[path]?.get) {
-    swaggerFile.paths[path].get.security = optionalBearerSecurity;
+if (swaggerFile.paths?.["/audio-guides"]?.get) {
+  swaggerFile.paths["/audio-guides"].get.security = optionalBearerSecurity;
+
+  const categoryCodeParam = swaggerFile.paths["/audio-guides"].get.parameters?.find(
+    (param: { name?: string }) => param.name === "categoryCode",
+  );
+  if (categoryCodeParam?.schema?.$ref) {
+    categoryCodeParam.schema = {
+      ...audioCategoryCodeSchema,
+      description: categoryCodeParam.description,
+    };
   }
+}
+
+const audioUploadFormSchema =
+  swaggerFile.paths?.["/audio-guides/upload"]?.post?.requestBody?.content?.[
+    "multipart/form-data"
+  ]?.schema;
+if (audioUploadFormSchema?.properties?.categoryCode) {
+  audioUploadFormSchema.properties.categoryCode = {
+    ...audioCategoryCodeSchema,
+    description:
+      audioUploadFormSchema.properties.categoryCode.description ??
+      "오디오 카테고리 코드. NATURE_SOUND, ASMR, NOISE 중 하나입니다.",
+  };
 }
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
@@ -67,10 +102,21 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     (err instanceof MulterError || err.name === "MulterError") &&
     (err as MulterError).code === "LIMIT_FILE_SIZE";
 
+  const requestPath = req.originalUrl.split("?", 1)[0] ?? req.path;
+  const isAudioUpload = requestPath === "/api/audio-guides/upload";
+  const isVisualUpload = requestPath === "/api/visual-guides/upload";
   const appErr = isMulterFileTooLarge
     ? new AppError({
-        code: USER_CODES.PROFILE_INVALID,
-        message: USER_MESSAGES.PROFILE_INVALID,
+        code: isAudioUpload
+          ? AUDIO_CODES.AUDIO_FILE_INVALID
+          : isVisualUpload
+            ? VISUAL_CODES.BAD_REQUEST
+            : USER_CODES.PROFILE_INVALID,
+        message: isAudioUpload
+          ? AUDIO_MESSAGES.AUDIO_FILE_INVALID
+          : isVisualUpload
+            ? VISUAL_MESSAGES.BAD_REQUEST
+            : USER_MESSAGES.PROFILE_INVALID,
         statusCode: 400,
       })
     : (err as AppError);
@@ -84,4 +130,5 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
+  startS3CleanupWorker();
 });

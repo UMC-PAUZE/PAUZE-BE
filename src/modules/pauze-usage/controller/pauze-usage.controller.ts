@@ -43,6 +43,7 @@ export class PauzeUsageController extends Controller {
 
   /**
    * 로그인한 사용자의 누적 PAUZE 사용 횟수와 현재 연속 사용 일수를 조회합니다.
+   * period에 따라 전체, 이번 주 또는 이번 달의 사용 횟수를 집계합니다.
    * 연속 사용 일수는 한국 시간(Asia/Seoul)의 날짜를 기준으로 계산합니다.
    */
   @Get("statistics")
@@ -72,6 +73,7 @@ export class PauzeUsageController extends Controller {
   })
   public async getStatistics(
     @Request() request: ExpressRequest,
+    /** 통계 조회 기간. ALL은 전체, WEEK는 이번 주, MONTH는 이번 달이며 기본값은 ALL입니다. */
     @Query() period: PauzeUsageStatisticsPeriod = PauzeUsageStatisticsPeriod.ALL,
   ): Promise<ApiSuccessResponse<PauzeUsageStatistics>> {
     const uid = request.user?.uid;
@@ -91,6 +93,11 @@ export class PauzeUsageController extends Controller {
     );
   }
 
+  /**
+   * 로그인한 사용자의 PAUZE 완료 이력을 기록합니다.
+   * 클라이언트는 완료 이벤트마다 UUID를 생성하고, 동일 요청 재시도 시 같은 completionId를 사용해야 합니다.
+   * 같은 사용자의 동일 completionId가 다시 요청되면 중복 저장하지 않고 기존 기록을 반환합니다.
+   */
   @Post("/")
   @Security("bearer")
   @Example<ApiSuccessResponse<PauzeUsageRecordResult>>({

@@ -12,6 +12,12 @@ enum Role {
   ADMIN
 }
 
+enum AudioCategoryCode {
+  NATURE_SOUND @map("자연소리")
+  ASMR         @map("ASMR")
+  NOISE        @map("노이즈")
+}
+
 enum SocialType {
   KAKAO
   LOCAL
@@ -114,7 +120,6 @@ model User {
   postBookmarks         PostBookmark[]
   searchHistories       SearchHistory[]
   audioLikes            AudioLiked[]
-  audioSaves            AudioSave[]
   conditions            Condition[]
   pauzeUsages           PauzeUsage[]
   sensitivityReports    SensitivityReport[]
@@ -232,26 +237,13 @@ model SearchHistory {
 // 즉각 진정하기 - 청각 안정
 
 model AudioCategory {
-  categoryId   BigInt    @id @map("category_id")
-  categoryName String    @db.VarChar(50) @map("category_name")
-
-  // 외래키로 변경
-  codeId       Int       @map("code_id")
-  audioCode    AudioCode @relation(fields: [codeId], references: [id])
-
-  createdAt    DateTime  @map("created_at")
-  updatedAt    DateTime? @map("updated_at")
+  categoryId   BigInt            @id @map("category_id")
+  categoryCode AudioCategoryCode @unique @map("category_code")
+  createdAt    DateTime          @map("created_at")
+  updatedAt    DateTime?         @map("updated_at")
   audioGuides  AudioGuide[]
 
   @@map("audio_category")
-}
-
-model AudioCode {
-  id        Int             @id @default(autoincrement())
-  codeName  String          @unique @db.VarChar(50) @map("code_name") // NATURE_SOUND 등 들어옴
-  categories AudioCategory[]
-
-  @@map("audio_code")
 }
 
 model AudioGuide {
@@ -259,13 +251,12 @@ model AudioGuide {
   categoryId BigInt    @map("category_id")
   audioTitle String    @db.VarChar(50) @map("audio_title")
   audioUrl   String    @db.Text @map("audio_url")
-  audioKey   String    @db.VarChar(255) @map("audio_key")
+  audioKey   String    @unique @db.VarChar(255) @map("audio_key")
   createdAt  DateTime  @map("created_at")
   updatedAt  DateTime? @map("updated_at")
 
   category   AudioCategory @relation(fields: [categoryId], references: [categoryId])
   likedBy    AudioLiked[]
-  savedBy    AudioSave[]
 
   @@map("audio_guide")
 }
@@ -283,18 +274,6 @@ model AudioLiked {
   @@map("audio_liked")
 }
 
-model AudioSave {
-  saveId    BigInt     @id @default(autoincrement()) @map("save_id")
-  audioId   BigInt     @map("audio_id")
-  uid       String     @db.Char(36)
-  createdAt DateTime   @default(now()) @map("created_at")
-
-  audio     AudioGuide @relation(fields: [audioId], references: [audioId], onDelete: Cascade)
-  user      User       @relation(fields: [uid], references: [uid], onDelete: Cascade)
-
-  @@unique([audioId, uid])
-  @@map("audio_save")
-}
 model Condition {
   conditionId BigInt @id @default(autoincrement()) @map("condition_id")
   uid         String @db.Char(36)
@@ -414,14 +393,33 @@ model ReportInsight {
 //즉각 진정하기 - 시각 안정
 model VisualGuide {
   visualId      BigInt    @id @default(autoincrement()) @map("visual_id")
-  visualTitle   String    @map("visual_title")
-  visualContent String    @db.Text @map("visual_content")
+  singletonKey  Int       @default(1) @unique @map("singleton_key")
   visualUrl     String    @db.Text @map("visual_url")
   visualKey     String    @unique @db.VarChar(255) @map("visual_key")
   createdAt     DateTime  @map("created_at")
   updatedAt     DateTime? @map("updated_at")
 
   @@map("visual_guide")
+}
+
+model VisualGuideLock {
+  lockId Int @id @map("lock_id")
+
+  @@map("visual_guide_lock")
+}
+
+model S3CleanupTask {
+  cleanupId     BigInt    @id @default(autoincrement()) @map("cleanup_id")
+  objectKey     String    @unique @db.VarChar(255) @map("object_key")
+  attempts      Int       @default(0)
+  lastError     String?   @db.Text @map("last_error")
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at")
+  lockedUntil   DateTime? @map("locked_until")
+  lockToken     String?   @db.Char(36) @map("lock_token")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([nextAttemptAt, lockedUntil], map: "s3_cleanup_task_claim_idx")
+  @@map("s3_cleanup_task")
 }
 
 model PauzeUsage {

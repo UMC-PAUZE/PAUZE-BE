@@ -1,4 +1,13 @@
 export interface VisualGuideFileResponse {
-    visualKey: string;
-    fileUrl: string;
+    /** 시각 안정 파일 재생 또는 다운로드에 사용할 URL */
+    visualUrl: string;
+}
+
+export interface VisualGuideUploadResult {
+    /** 등록된 시각 안정 가이드 식별자 */
+    visualId: number;
+    /** DB에 저장된 시각 안정 파일 URL */
+    visualUrl: string;
+    /** UTC 기준 ISO 8601 등록 시각 */
+    createdAt: string;
 }
