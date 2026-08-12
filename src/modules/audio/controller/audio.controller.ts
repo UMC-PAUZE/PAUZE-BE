@@ -77,7 +77,7 @@ function parsePagination(
 ): AudioCursorPagination {
   if (cursor !== undefined && (!/^\d+$/.test(cursor) || BigInt(cursor) < 1n)) {
     throw new AppError({
-      code: AUDIO_CODES.INVALID_PAGINATION,
+      code: AUDIO_CODES.BAD_REQUEST,
       message: AUDIO_MESSAGES.INVALID_PAGINATION,
       statusCode: 400,
     });
@@ -86,7 +86,7 @@ function parsePagination(
   const parsedSize = size ?? DEFAULT_PAGE_SIZE;
   if (!Number.isInteger(parsedSize) || parsedSize < 1 || parsedSize > MAX_PAGE_SIZE) {
     throw new AppError({
-      code: AUDIO_CODES.INVALID_PAGINATION,
+      code: AUDIO_CODES.BAD_REQUEST,
       message: AUDIO_MESSAGES.INVALID_PAGINATION,
       statusCode: 400,
     });
