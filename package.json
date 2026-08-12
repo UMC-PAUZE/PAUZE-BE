@@ -16,7 +16,7 @@
   "main": "index.js",
   "scripts": {
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsoa spec-and-routes && tsc --noEmit",
     "build": "prisma generate && tsoa spec-and-routes",
     "prestart": "npm run build",
     "start": "tsx src/index.ts",
