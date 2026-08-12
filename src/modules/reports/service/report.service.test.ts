@@ -31,6 +31,7 @@ test("builds a weekly report and calculates hardest day and score change", () =>
   const report = buildWeeklyReport(
     [record("2026-07-13", 40), record("2026-07-17", 80)],
     [record("2026-07-06", 70), record("2026-07-07", 50)],
+    0,
   );
 
   assert.equal(report.averageScore, 60);
@@ -44,7 +45,7 @@ test("builds a weekly report and calculates hardest day and score change", () =>
 });
 
 test("returns null score change when the previous week has no data", () => {
-  assert.equal(buildWeeklyReport([record("2026-07-13", 40)], []).scoreChange, null);
+  assert.equal(buildWeeklyReport([record("2026-07-13", 40)], [], 0).scoreChange, null);
 });
 
 test("uses the actual PAUZE completion count supplied for the report period", () => {
@@ -61,9 +62,9 @@ test("uses the actual PAUZE completion count supplied for the report period", ()
 });
 
 test("builds an empty report so the insufficient-data insight can be stored", () => {
-  assert.equal(buildWeeklyReport([], []).averageScore, 0);
+  assert.equal(buildWeeklyReport([], [], 0).averageScore, 0);
   assert.equal(
-    buildMonthlyReport([], [], new Date("2026-07-01T00:00:00.000Z"))
+    buildMonthlyReport([], [], new Date("2026-07-01T00:00:00.000Z"), 0)
       .averageScore,
     0,
   );
@@ -130,7 +131,7 @@ test("counts noise exposure across 18 distinct dates independently of total aver
     trigger: "소음 노출",
     count: 18,
   });
-  assert.equal(buildMonthlyReport(records, [], new Date("2026-07-01T00:00:00.000Z")).averageScore, 8.5);
+  assert.equal(buildMonthlyReport(records, [], new Date("2026-07-01T00:00:00.000Z"), 0).averageScore, 8.5);
 });
 
 test("groups a five-week month and finds its hardest week", () => {
@@ -143,7 +144,7 @@ test("groups a five-week month and finds its hardest week", () => {
     record("2026-07-27", 60),
   ];
   const weeks = aggregateMonthlyWeeks(records, monthStart);
-  const report = buildMonthlyReport(records, [record("2026-06-30", 50)], monthStart);
+  const report = buildMonthlyReport(records, [record("2026-06-30", 50)], monthStart, 0);
 
   assert.equal(weeks.length, 5);
   assert.equal(report.hardestWeek, "4주차");

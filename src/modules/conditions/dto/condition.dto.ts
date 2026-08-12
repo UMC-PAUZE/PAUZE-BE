@@ -33,3 +33,16 @@ export interface ConditionErrorResponseDto {
   message: string;
   result: unknown[];
 }
+
+export interface GetTodayConditionResponseDto {
+  conditionId: number;
+  conditionDate: string;
+  sleepLevel: SleepLevel;
+  noiseLevel: NoiseLevel;
+  visualLevel: VisualLevel;
+  socialLevel: SocialLevel;
+  energyLevel: EnergyLevel;
+  sensitivityScore: number;
+  sensitivityLevel: SensitivityLevel;
+  triggerCodes: TriggerCode[];
+}
