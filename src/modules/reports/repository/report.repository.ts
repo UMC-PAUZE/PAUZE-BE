@@ -1,7 +1,6 @@
 import { prisma } from "../../../db.config.js";
 import type { ReportConditionRecord } from "../dto/report.dto.js";
 import type {
-  InsightCandidate,
   ReportPeriodType,
   TriggerRankMetric,
 } from "../calculator/insight.types.js";

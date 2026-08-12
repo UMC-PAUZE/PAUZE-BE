@@ -53,39 +53,6 @@ const swaggerFile = JSON.parse(
   fs.readFileSync(path.resolve("dist/swagger.json"), "utf8")
 );
 
-const audioCategoryCodeSchema = {
-  type: "string",
-  enum: ["NATURE_SOUND", "ASMR", "NOISE"],
-};
-
-const optionalBearerSecurity = [{ bearer: [] }, {}];
-if (swaggerFile.paths?.["/audio-guides"]?.get) {
-  swaggerFile.paths["/audio-guides"].get.security = optionalBearerSecurity;
-
-  const categoryCodeParam = swaggerFile.paths["/audio-guides"].get.parameters?.find(
-    (param: { name?: string }) => param.name === "categoryCode",
-  );
-  if (categoryCodeParam?.schema?.$ref) {
-    categoryCodeParam.schema = {
-      ...audioCategoryCodeSchema,
-      description: categoryCodeParam.description,
-    };
-  }
-}
-
-const audioUploadFormSchema =
-  swaggerFile.paths?.["/audio-guides/upload"]?.post?.requestBody?.content?.[
-    "multipart/form-data"
-  ]?.schema;
-if (audioUploadFormSchema?.properties?.categoryCode) {
-  audioUploadFormSchema.properties.categoryCode = {
-    ...audioCategoryCodeSchema,
-    description:
-      audioUploadFormSchema.properties.categoryCode.description ??
-      "오디오 카테고리 코드. NATURE_SOUND, ASMR, NOISE 중 하나입니다.",
-  };
-}
-
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 const router = express.Router();

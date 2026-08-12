@@ -3,6 +3,12 @@ export interface TermAgreementDto {
   agreed: boolean;
 }
 
+/** Email-only: send signup verification code. */
+export interface EmailCodeRequestDto {
+  email: string;
+}
+
+/** Final local signup after email is verified. */
 export interface LocalSignupRequestDto {
   name: string;
   nickname: string;
@@ -31,6 +37,12 @@ export interface KakaoConfirmRequestDto {
   kakaoAccessToken: string;
 }
 
+/** LOCAL→KAKAO: send link verification code to email. */
+export interface LinkEmailCodeRequestDto {
+  email: string;
+  kakaoAccessToken: string;
+}
+
 export interface KakaoLoginRequestDto {
   kakaoAccessToken: string;
 }
@@ -43,9 +55,12 @@ export interface KakaoSignupRequestDto {
   termAgreements: TermAgreementDto[];
 }
 
-/** Email+password required when adding LOCAL to an existing KAKAO account. */
+/**
+ * Link account.
+ * - KAKAO→LOCAL: email + password (new local credentials) required
+ * - LOCAL→KAKAO: kakaoAccessToken only (email optional; taken from token). Requires prior email verify.
+ */
 export interface LinkAccountRequestDto {
-  agree: boolean;
   kakaoAccessToken: string;
   email?: string;
   password?: string;
@@ -75,10 +90,19 @@ export interface EmailCodeSentResultDto {
   nextStep: "VERIFY_EMAIL";
 }
 
+export interface EmailVerifiedSignupResultDto {
+  email: string;
+  nextStep: "COMPLETE_SIGNUP";
+}
+
 export interface EmailVerifiedAskLinkResultDto {
   email: string;
   nextStep: "ASK_LINK";
 }
+
+export type EmailVerifiedResultDto =
+  | EmailVerifiedSignupResultDto
+  | EmailVerifiedAskLinkResultDto;
 
 export interface KakaoSignupRequiredResultDto {
   email: string;
@@ -90,6 +114,18 @@ export interface LinkAccountRequiredResultDto {
   existingSocialType: "KAKAO" | "LOCAL";
   email: string;
   nextStep?: "KAKAO_CONFIRM" | "LINK_ACCOUNT";
+}
+
+export type EmailAvailabilityStatus = "AVAILABLE" | "LOCAL" | "KAKAO";
+
+export interface EmailAvailabilityResultDto {
+  status: EmailAvailabilityStatus;
+  email: string;
+}
+
+export interface NicknameAvailabilityResultDto {
+  available: boolean;
+  nickname: string;
 }
 
 export interface RefreshTokenResultDto {

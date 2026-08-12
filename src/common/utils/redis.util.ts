@@ -172,12 +172,6 @@ export type EmailPendingPurpose = "SIGNUP" | "LINK";
 export interface SignupPendingPayload {
   purpose: "SIGNUP";
   email: string;
-  salt: string;
-  hashedPassword: string;
-  name: string;
-  nickname: string;
-  birth: string;
-  termAgreements: Array<{ termId: number; agreed: boolean }>;
 }
 
 export interface LinkPendingPayload {

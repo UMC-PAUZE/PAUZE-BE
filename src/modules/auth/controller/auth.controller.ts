@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Request,
   Response,
   Route,
@@ -17,17 +18,21 @@ import { AppError } from "../../../common/errors/app.error.js";
 import type {
   AuthMeResultDto,
   AuthTokenResultDto,
+  EmailAvailabilityResultDto,
+  EmailCodeRequestDto,
   EmailCodeSentResultDto,
-  EmailVerifiedAskLinkResultDto,
+  EmailVerifiedResultDto,
   EmailVerifyRequestDto,
   KakaoConfirmRequestDto,
   KakaoLoginRequestDto,
   KakaoSignupRequiredResultDto,
   KakaoSignupRequestDto,
   LinkAccountRequestDto,
+  LinkEmailCodeRequestDto,
   LocalLoginRequestDto,
   LocalSignupRequestDto,
   LogoutRequestDto,
+  NicknameAvailabilityResultDto,
   RefreshTokenRequestDto,
   RefreshTokenResultDto,
 } from "../dto/auth.dto.js";
@@ -37,15 +42,44 @@ import { authService } from "../service/auth.service.js";
 @Route("auth")
 @Tags("Auth")
 export class AuthController extends Controller {
-  @Post("signup")
+  @Get("email/availability")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  public async checkEmailAvailability(
+    @Query() email: string
+  ): Promise<ApiSuccessResponse<EmailAvailabilityResultDto>> {
+    const result = await authService.checkEmailAvailability(email);
+    return success(
+      AUTH_CODES.EMAIL_AVAILABLE,
+      AUTH_MESSAGES.EMAIL_AVAILABLE,
+      result
+    );
+  }
+
+  @Get("nickname/availability")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  public async checkNicknameAvailability(
+    @Query() nickname: string
+  ): Promise<ApiSuccessResponse<NicknameAvailabilityResultDto>> {
+    const result = await authService.checkNicknameAvailability(nickname);
+    return success(
+      AUTH_CODES.NICKNAME_AVAILABLE,
+      AUTH_MESSAGES.NICKNAME_AVAILABLE,
+      result
+    );
+  }
+
+  @Post("email/code")
   @SuccessResponse(200, "OK")
   @Response(400, "Bad Request")
   @Response(409, "Conflict")
+  @Response(429, "Too Many Requests")
   @Response(500, "Internal Server Error")
-  public async signup(
-    @Body() body: LocalSignupRequestDto
+  public async sendSignupEmailCode(
+    @Body() body: EmailCodeRequestDto
   ): Promise<ApiSuccessResponse<EmailCodeSentResultDto>> {
-    const result = await authService.signup(body);
+    const result = await authService.sendSignupEmailCode(body);
     return success(
       AUTH_CODES.EMAIL_CODE_SENT,
       AUTH_MESSAGES.EMAIL_CODE_SENT,
@@ -53,10 +87,26 @@ export class AuthController extends Controller {
     );
   }
 
+  @Post("signup")
+  @SuccessResponse(201, "Created")
+  @Response(400, "Bad Request")
+  @Response(409, "Conflict")
+  @Response(500, "Internal Server Error")
+  public async signup(
+    @Body() body: LocalSignupRequestDto
+  ): Promise<ApiSuccessResponse<AuthTokenResultDto>> {
+    const result = await authService.signup(body);
+    this.setStatus(201);
+    return success(
+      AUTH_CODES.LOCAL_SIGNUP_SUCCESS,
+      AUTH_MESSAGES.LOCAL_SIGNUP_SUCCESS,
+      result
+    );
+  }
+
   @Post("login")
   @SuccessResponse(200, "OK")
   @Response(401, "Unauthorized")
-  @Response(409, "Conflict")
   public async login(
     @Body() body: LocalLoginRequestDto
   ): Promise<ApiSuccessResponse<AuthTokenResultDto>> {
@@ -66,27 +116,23 @@ export class AuthController extends Controller {
 
   @Post("email/verify")
   @SuccessResponse(200, "OK")
-  @Response<ApiSuccessResponse<AuthTokenResultDto>>(201, "Created")
   @Response(400, "Bad Request")
   public async verifyEmail(
     @Body() body: EmailVerifyRequestDto
-  ): Promise<
-    ApiSuccessResponse<AuthTokenResultDto | EmailVerifiedAskLinkResultDto>
-  > {
+  ): Promise<ApiSuccessResponse<EmailVerifiedResultDto>> {
     const result = await authService.verifyEmail(body);
 
-    if ("nextStep" in result && result.nextStep === "ASK_LINK") {
+    if (result.nextStep === "ASK_LINK") {
       return success(
         AUTH_CODES.EMAIL_VERIFIED,
-        AUTH_MESSAGES.EMAIL_VERIFIED,
+        AUTH_MESSAGES.EMAIL_VERIFIED_ASK_LINK,
         result
       );
     }
 
-    this.setStatus(201);
     return success(
-      AUTH_CODES.LOCAL_SIGNUP_SUCCESS,
-      AUTH_MESSAGES.LOCAL_SIGNUP_SUCCESS,
+      AUTH_CODES.EMAIL_VERIFIED,
+      AUTH_MESSAGES.EMAIL_VERIFIED,
       result
     );
   }
@@ -100,6 +146,23 @@ export class AuthController extends Controller {
     @Body() body: KakaoConfirmRequestDto
   ): Promise<ApiSuccessResponse<EmailCodeSentResultDto>> {
     const result = await authService.kakaoConfirm(body);
+    return success(
+      AUTH_CODES.EMAIL_CODE_SENT,
+      AUTH_MESSAGES.EMAIL_CODE_SENT,
+      result
+    );
+  }
+
+  @Post("link/email-code")
+  @SuccessResponse(200, "OK")
+  @Response(400, "Bad Request")
+  @Response(401, "Unauthorized")
+  @Response(409, "Conflict")
+  @Response(429, "Too Many Requests")
+  public async sendLinkEmailCode(
+    @Body() body: LinkEmailCodeRequestDto
+  ): Promise<ApiSuccessResponse<EmailCodeSentResultDto>> {
+    const result = await authService.sendLinkEmailCode(body);
     return success(
       AUTH_CODES.EMAIL_CODE_SENT,
       AUTH_MESSAGES.EMAIL_CODE_SENT,

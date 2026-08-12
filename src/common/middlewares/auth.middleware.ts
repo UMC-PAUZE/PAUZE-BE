@@ -8,9 +8,10 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/login",
   "/auth/refresh",
   "/auth/kakao",
-  "/auth/email/verify",
+  "/auth/email",
+  "/auth/nickname",
   "/auth/link",
-  "/visual-guides"
+  "/visual-guides",
 ];
 
 const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts"];
