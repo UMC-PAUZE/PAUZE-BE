@@ -25,9 +25,9 @@ export interface UserMeResultDto {
 }
 
 export interface UserProfileStatsDto {
-  totalMeasurements: number | null;
-  consecutiveDays: number | null;
-  averageSensitivity: number | null;
+  totalMeasurements: number;
+  consecutiveDays: number;
+  averageSensitivity: number;
 }
 
 export interface UserProfileResultDto {

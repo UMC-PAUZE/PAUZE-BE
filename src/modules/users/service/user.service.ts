@@ -7,6 +7,7 @@ import {
   deleteObject,
   uploadObject,
 } from "../../../common/utils/s3.util.js";
+import { getUserConditionStats } from "../../conditions/service/condition.service.js";
 import {
   hasUploadedProfileImage,
   isAllowedProfileImage,
@@ -128,6 +129,7 @@ export class UserService {
 
   async getProfile(uid: string): Promise<UserProfileResultDto> {
     const user = await this.findUserOrThrow(uid);
+    const stats = await getUserConditionStats(uid);
 
     return {
       uid: user.uid,
@@ -138,11 +140,7 @@ export class UserService {
       email: user.email,
       socialTypes: user.oauths.map((oauth) => oauth.socialType),
       joinedAt: formatJoinedAt(user.createdAt),
-      stats: {
-        totalMeasurements: null,
-        consecutiveDays: null,
-        averageSensitivity: null,
-      },
+      stats,
     };
   }
 

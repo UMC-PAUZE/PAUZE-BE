@@ -5,6 +5,7 @@ import type {
   GetTodayConditionResponseDto,
   SensitivityLevel,
   TriggerCode,
+  UserConditionStatsDto,
 } from "../dto/condition.dto.js";
 import {
   ConditionAlreadyExistsError,
@@ -20,6 +21,8 @@ import {
   getSensitivityLevel,
 } from "../policy/condition.policy.js";
 import {
+  aggregateStatsByUser,
+  findConditionDatesByUser,
   findLatestConditionByUserId,
   findTodayConditionByUserId,
   insertTodayCondition,
@@ -256,4 +259,78 @@ export const getTodayCondition = async (
     }
     throw mappedError;
   }
+};
+
+interface ConditionStatsAggregate {
+  _count: { _all: number };
+  _avg: { sensitivityScore: number | null };
+}
+
+interface ConditionStatsRepository {
+  aggregateStatsByUser: (uid: string) => Promise<ConditionStatsAggregate>;
+  findConditionDatesByUser: (
+    uid: string,
+  ) => Promise<{ conditionDate: Date }[]>;
+}
+
+const conditionStatsRepository: ConditionStatsRepository = {
+  aggregateStatsByUser,
+  findConditionDatesByUser,
+};
+
+const MILLISECONDS_PER_DAY = 86_400_000;
+
+const toUtcDay = (date: Date): number =>
+  Math.floor(date.getTime() / MILLISECONDS_PER_DAY);
+
+const calculateCurrentStreak = (conditionDates: Date[], now: Date): number => {
+  if (conditionDates.length === 0) {
+    return 0;
+  }
+
+  const days = [...new Set(conditionDates.map(toUtcDay))].sort((a, b) => a - b);
+  const today = toUtcDay(getKstTodayDate(now));
+  const lastDay = days[days.length - 1];
+  if (lastDay === undefined || lastDay < today - 1 || lastDay > today) {
+    return 0;
+  }
+
+  let streak = 1;
+  for (let index = days.length - 1; index > 0; index -= 1) {
+    const currentDay = days[index];
+    const previousDay = days[index - 1];
+    if (
+      currentDay === undefined ||
+      previousDay === undefined ||
+      currentDay - previousDay !== 1
+    ) {
+      break;
+    }
+    streak += 1;
+  }
+
+  return streak;
+};
+
+export const getUserConditionStats = async (
+  uid: string,
+  repository: ConditionStatsRepository = conditionStatsRepository,
+  now: () => Date = () => new Date(),
+): Promise<UserConditionStatsDto> => {
+  const [aggregate, dates] = await Promise.all([
+    repository.aggregateStatsByUser(uid),
+    repository.findConditionDatesByUser(uid),
+  ]);
+
+  return {
+    totalMeasurements: aggregate._count._all,
+    consecutiveDays: calculateCurrentStreak(
+      dates.map(({ conditionDate }) => conditionDate),
+      now(),
+    ),
+    averageSensitivity:
+      aggregate._avg.sensitivityScore == null
+        ? 0
+        : Math.round(aggregate._avg.sensitivityScore),
+  };
 };
