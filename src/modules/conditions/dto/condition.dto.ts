@@ -46,3 +46,9 @@ export interface GetTodayConditionResponseDto {
   sensitivityLevel: SensitivityLevel;
   triggerCodes: TriggerCode[];
 }
+
+export interface UserConditionStatsDto {
+  totalMeasurements: number;
+  consecutiveDays: number;
+  averageSensitivity: number;
+}
