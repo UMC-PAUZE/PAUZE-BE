@@ -8,6 +8,7 @@ import {
   createTodayCondition,
   getKstTodayDate,
   getTodayCondition,
+  getUserConditionStats,
   isUniqueConstraintError,
   mapConditionCreateError,
   mapConditionFetchError,
@@ -213,4 +214,103 @@ test("mapConditionFetchError maps database and unexpected errors", () => {
     mapConditionFetchError(new Error("unknown")).code,
     "CONDITION_FETCH_FAILED_500",
   );
+});
+
+test("getUserConditionStats returns zeros when there are no measurements", async () => {
+  const result = await getUserConditionStats("user-id", {
+    aggregateStatsByUser: async () => ({
+      _count: { _all: 0 },
+      _avg: { sensitivityScore: null },
+    }),
+    findConditionDatesByUser: async () => [],
+  });
+
+  assert.deepEqual(result, {
+    totalMeasurements: 0,
+    consecutiveDays: 0,
+    averageSensitivity: 0,
+  });
+});
+
+test("getUserConditionStats counts three consecutive days ending today", async () => {
+  const result = await getUserConditionStats(
+    "user-id",
+    {
+      aggregateStatsByUser: async () => ({
+        _count: { _all: 3 },
+        _avg: { sensitivityScore: 40 },
+      }),
+      findConditionDatesByUser: async () => [
+        { conditionDate: new Date("2026-08-11T00:00:00.000Z") },
+        { conditionDate: new Date("2026-08-12T00:00:00.000Z") },
+        { conditionDate: new Date("2026-08-13T00:00:00.000Z") },
+      ],
+    },
+    () => new Date("2026-08-13T12:00:00.000Z"),
+  );
+
+  assert.deepEqual(result, {
+    totalMeasurements: 3,
+    consecutiveDays: 3,
+    averageSensitivity: 40,
+  });
+});
+
+test("getUserConditionStats returns 0 consecutive days when the last measurement is before yesterday", async () => {
+  const result = await getUserConditionStats(
+    "user-id",
+    {
+      aggregateStatsByUser: async () => ({
+        _count: { _all: 2 },
+        _avg: { sensitivityScore: 50 },
+      }),
+      findConditionDatesByUser: async () => [
+        { conditionDate: new Date("2026-08-10T00:00:00.000Z") },
+        { conditionDate: new Date("2026-08-11T00:00:00.000Z") },
+      ],
+    },
+    () => new Date("2026-08-13T12:00:00.000Z"),
+  );
+
+  assert.deepEqual(result, {
+    totalMeasurements: 2,
+    consecutiveDays: 0,
+    averageSensitivity: 50,
+  });
+});
+
+test("getUserConditionStats rounds the average sensitivity to an integer", async () => {
+  const result = await getUserConditionStats(
+    "user-id",
+    {
+      aggregateStatsByUser: async () => ({
+        _count: { _all: 3 },
+        _avg: { sensitivityScore: 23.3 },
+      }),
+      findConditionDatesByUser: async () => [
+        { conditionDate: new Date("2026-08-13T00:00:00.000Z") },
+      ],
+    },
+    () => new Date("2026-08-13T12:00:00.000Z"),
+  );
+
+  assert.equal(result.averageSensitivity, 23);
+});
+
+test("getUserConditionStats rounds 23.45 to 24 via one-decimal then integer", async () => {
+  const result = await getUserConditionStats(
+    "user-id",
+    {
+      aggregateStatsByUser: async () => ({
+        _count: { _all: 2 },
+        _avg: { sensitivityScore: 23.45 },
+      }),
+      findConditionDatesByUser: async () => [
+        { conditionDate: new Date("2026-08-13T00:00:00.000Z") },
+      ],
+    },
+    () => new Date("2026-08-13T12:00:00.000Z"),
+  );
+
+  assert.equal(result.averageSensitivity, 24);
 });

@@ -84,3 +84,17 @@ export const findLatestConditionByUserId = async (uid: string) =>
       },
     },
   });
+
+export const aggregateStatsByUser = async (uid: string) =>
+  prisma.condition.aggregate({
+    where: { uid },
+    _count: { _all: true },
+    _avg: { sensitivityScore: true },
+  });
+
+export const findConditionDatesByUser = async (uid: string) =>
+  prisma.condition.findMany({
+    where: { uid },
+    select: { conditionDate: true },
+    orderBy: { conditionDate: "asc" },
+  });
