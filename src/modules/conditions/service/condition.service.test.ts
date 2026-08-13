@@ -296,3 +296,21 @@ test("getUserConditionStats rounds the average sensitivity to an integer", async
 
   assert.equal(result.averageSensitivity, 23);
 });
+
+test("getUserConditionStats rounds 23.45 to 24 via one-decimal then integer", async () => {
+  const result = await getUserConditionStats(
+    "user-id",
+    {
+      aggregateStatsByUser: async () => ({
+        _count: { _all: 2 },
+        _avg: { sensitivityScore: 23.45 },
+      }),
+      findConditionDatesByUser: async () => [
+        { conditionDate: new Date("2026-08-13T00:00:00.000Z") },
+      ],
+    },
+    () => new Date("2026-08-13T12:00:00.000Z"),
+  );
+
+  assert.equal(result.averageSensitivity, 24);
+});

@@ -280,6 +280,8 @@ const conditionStatsRepository: ConditionStatsRepository = {
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 
+const roundOne = (value: number): number => Math.round(value * 10) / 10;
+
 const toUtcDay = (date: Date): number =>
   Math.floor(date.getTime() / MILLISECONDS_PER_DAY);
 
@@ -331,6 +333,6 @@ export const getUserConditionStats = async (
     averageSensitivity:
       aggregate._avg.sensitivityScore == null
         ? 0
-        : Math.round(aggregate._avg.sensitivityScore),
+        : Math.round(roundOne(aggregate._avg.sensitivityScore)),
   };
 };
