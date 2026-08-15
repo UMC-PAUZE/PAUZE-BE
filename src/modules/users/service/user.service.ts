@@ -8,6 +8,7 @@ import {
   uploadObject,
 } from "../../../common/utils/s3.util.js";
 import { getUserConditionStats } from "../../conditions/service/condition.service.js";
+import { formatBirthDate } from "../../auth/constants/auth.constants.js";
 import {
   hasUploadedProfileImage,
   isAllowedProfileImage,
@@ -138,6 +139,7 @@ export class UserService {
       introduction: user.introduction,
       profileImageUrl: user.profileImageUrl,
       email: user.email,
+      birth: formatBirthDate(user.birth),
       socialTypes: user.oauths.map((oauth) => oauth.socialType),
       joinedAt: formatJoinedAt(user.createdAt),
       stats,
