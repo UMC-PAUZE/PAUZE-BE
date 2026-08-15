@@ -54,6 +54,7 @@ import type {
   KakaoSignupRequiredResultDto,
   KakaoSignupRequestDto,
   LinkAccountRequestDto,
+  LinkAccountRequiredResultDto,
   LinkEmailCodeRequestDto,
   LocalLoginRequestDto,
   LocalSignupRequestDto,
@@ -995,7 +996,11 @@ export class AuthService {
 
   async kakaoLogin(
     body: KakaoLoginRequestDto
-  ): Promise<AuthTokenResultDto | KakaoSignupRequiredResultDto> {
+  ): Promise<
+    | AuthTokenResultDto
+    | KakaoSignupRequiredResultDto
+    | LinkAccountRequiredResultDto
+  > {
     const kakaoUser = await this.requireKakaoUser(body.kakaoAccessToken);
 
     const existingOauth = await prisma.oauth.findUnique({
@@ -1042,16 +1047,11 @@ export class AuthService {
       }
 
       if (hasLocal) {
-        throw new AppError({
-          code: AUTH_CODES.LINK_ACCOUNT_REQUIRED,
-          message: AUTH_MESSAGES.LINK_ACCOUNT_REQUIRED_LOCAL,
-          statusCode: 409,
-          result: {
-            existingSocialType: "LOCAL",
-            email: this.maskEmail(emailUser.email),
-            nextStep: "LINK_ACCOUNT",
-          },
-        });
+        return {
+          existingSocialType: "LOCAL",
+          email: this.maskEmail(emailUser.email),
+          nextStep: "LINK_ACCOUNT",
+        };
       }
     }
 

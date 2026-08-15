@@ -37,6 +37,7 @@ export interface UserProfileResultDto {
   introduction: string | null;
   profileImageUrl: string | null;
   email: string;
+  birth: string;
   socialTypes: SocialType[];
   joinedAt: string;
   stats: UserProfileStatsDto;

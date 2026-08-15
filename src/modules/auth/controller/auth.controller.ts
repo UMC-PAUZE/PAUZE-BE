@@ -28,6 +28,7 @@ import type {
   KakaoSignupRequiredResultDto,
   KakaoSignupRequestDto,
   LinkAccountRequestDto,
+  LinkAccountRequiredResultDto,
   LinkEmailCodeRequestDto,
   LocalLoginRequestDto,
   LocalSignupRequestDto,
@@ -194,7 +195,11 @@ export class AuthController extends Controller {
   public async kakaoLogin(
     @Body() body: KakaoLoginRequestDto
   ): Promise<
-    ApiSuccessResponse<AuthTokenResultDto | KakaoSignupRequiredResultDto>
+    ApiSuccessResponse<
+      | AuthTokenResultDto
+      | KakaoSignupRequiredResultDto
+      | LinkAccountRequiredResultDto
+    >
   > {
     const result = await authService.kakaoLogin(body);
 
@@ -202,6 +207,14 @@ export class AuthController extends Controller {
       return success(
         AUTH_CODES.KAKAO_LOGIN_SUCCESS,
         AUTH_MESSAGES.KAKAO_LOGIN_SUCCESS,
+        result
+      );
+    }
+
+    if (result.nextStep === "LINK_ACCOUNT") {
+      return success(
+        AUTH_CODES.LINK_ACCOUNT_REQUIRED,
+        AUTH_MESSAGES.LINK_ACCOUNT_REQUIRED_LOCAL,
         result
       );
     }
