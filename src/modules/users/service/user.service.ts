@@ -8,6 +8,7 @@ import {
   uploadObject,
 } from "../../../common/utils/s3.util.js";
 import { getUserConditionStats } from "../../conditions/service/condition.service.js";
+import { getUploadedFileBody } from "../../../common/utils/uploaded-file.util.js";
 import { formatBirthDate } from "../../auth/constants/auth.constants.js";
 import {
   hasUploadedProfileImage,
@@ -270,7 +271,8 @@ export class UserService {
         const key = buildProfileImageKey(uid, uploadedImage.originalname);
         const uploaded = await uploadObject({
           key,
-          body: uploadedImage.buffer,
+          body: getUploadedFileBody(uploadedImage),
+          contentLength: uploadedImage.size,
           filename: uploadedImage.originalname,
           contentType: uploadedImage.mimetype,
         });

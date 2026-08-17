@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import multer, { MulterError } from "multer";
 import swaggerUi from "swagger-ui-express";
+import { tmpdir } from "node:os";
 import path from "path";
 import fs from "fs";
 import { RegisterRoutes } from "./generated/routes.js";
@@ -25,6 +26,7 @@ import {
   AUDIO_MESSAGES,
 } from "./modules/audio/errors/audio.errors.js";
 import { AUDIO_FILE_MAX_BYTES } from "./modules/audio/utils/audio-file.util.js";
+import { removeTemporaryUploads } from "./common/utils/uploaded-file.util.js";
 import {
   VISUAL_CODES,
   VISUAL_MESSAGES,
@@ -77,10 +79,24 @@ const availabilityLimiter = rateLimit({
 
 const router = express.Router();
 router.use(authenticate);
+router.use((req, res, next) => {
+  let cleanupStarted = false;
+  const cleanup = () => {
+    if (cleanupStarted) return;
+    cleanupStarted = true;
+    void removeTemporaryUploads(req);
+  };
+  res.once("finish", cleanup);
+  res.once("close", cleanup);
+  next();
+});
 router.get("/auth/email/availability", availabilityLimiter);
 router.get("/auth/nickname/availability", availabilityLimiter);
 RegisterRoutes(router, {
-  multer: multer({ limits: { fileSize: AUDIO_FILE_MAX_BYTES } }),
+  multer: multer({
+    dest: path.join(tmpdir(), "pauze-uploads"),
+    limits: { fileSize: AUDIO_FILE_MAX_BYTES },
+  }),
 });
 app.use("/api", router);
 
