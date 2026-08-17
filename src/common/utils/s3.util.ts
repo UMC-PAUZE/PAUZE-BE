@@ -5,6 +5,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import type { UploadBody } from "./uploaded-file.util.js";
 
 const EXT_TO_CONTENT_TYPE: Record<string, string> = {
   // image
@@ -112,7 +113,8 @@ export function resolveContentType(
 
 export async function uploadObject(params: {
   key: string;
-  body: Buffer;
+  body: UploadBody;
+  contentLength?: number;
   /** Original filename helps detect type when mimetype is wrong/empty */
   filename?: string;
   contentType?: string;
@@ -128,6 +130,7 @@ export async function uploadObject(params: {
       Bucket: getBucket(),
       Key: params.key,
       Body: params.body,
+      ContentLength: params.contentLength,
       ContentType: contentType,
     })
   );

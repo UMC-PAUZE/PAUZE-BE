@@ -4,6 +4,10 @@ import {
   uploadObject,
 } from "../../../common/utils/s3.util.js";
 import { AppError } from "../../../common/errors/app.error.js";
+import {
+  getUploadedFileBody,
+  type UploadBody,
+} from "../../../common/utils/uploaded-file.util.js";
 import type { AudioUploadResult } from "../dto/audio-upload.dto.js";
 import { AUDIO_CODES, AUDIO_MESSAGES } from "../errors/audio.errors.js";
 import {
@@ -20,7 +24,8 @@ export interface AudioObjectStorage {
   buildKey(originalFilename: string): string;
   upload(params: {
     key: string;
-    body: Buffer;
+    body: UploadBody;
+    contentLength: number;
     filename: string;
     contentType: string;
   }): Promise<{ key: string; url: string }>;
@@ -73,7 +78,8 @@ export class AudioUploadService {
       const key = this.storage.buildKey(params.audioFile.originalname);
       const uploaded = await this.storage.upload({
         key,
-        body: params.audioFile.buffer,
+        body: getUploadedFileBody(params.audioFile),
+        contentLength: params.audioFile.size,
         filename: params.audioFile.originalname,
         contentType: params.audioFile.mimetype,
       });

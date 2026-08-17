@@ -38,7 +38,7 @@ export class VisualController extends Controller {
     @Response<ApiErrorResponse>(500, "Internal Server Error")
     public async uploadGuide(
         @Request() request: ExpressRequest,
-        /** 업로드할 시각 안정용 오디오 파일. mp3, wav, m4a, aac, ogg, flac 형식을 지원합니다. */
+        /** 업로드할 시각 안정용 오디오 파일. 최대 20MB이며 mp3, wav, m4a, aac, ogg, flac 형식을 지원합니다. */
         @UploadedFile() visualFile: Express.Multer.File,
     ): Promise<ApiSuccessResponse<VisualGuideUploadResult>> {
         requireAdmin(request);
