@@ -19,7 +19,7 @@ const AUDIO_EXTENSIONS = new Set([
   ".flac",
 ]);
 
-export const AUDIO_FILE_MAX_BYTES = 5 * 1024 * 1024;
+export const AUDIO_FILE_MAX_BYTES = 20 * 1024 * 1024;
 
 export function isAllowedAudioFile(file: {
   mimetype: string;

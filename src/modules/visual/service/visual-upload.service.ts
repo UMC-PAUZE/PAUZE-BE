@@ -1,5 +1,9 @@
 import { AppError } from "../../../common/errors/app.error.js";
 import {
+  getUploadedFileBody,
+  type UploadBody,
+} from "../../../common/utils/uploaded-file.util.js";
+import {
   buildVisualKey,
   deleteObject,
   uploadObject,
@@ -16,7 +20,8 @@ export interface VisualObjectStorage {
   buildKey(originalFilename: string): string;
   upload(params: {
     key: string;
-    body: Buffer;
+    body: UploadBody;
+    contentLength: number;
     filename: string;
     contentType: string;
   }): Promise<{ key: string; url: string }>;
@@ -52,7 +57,8 @@ export class VisualGuideUploadService {
     try {
       const uploaded = await this.storage.upload({
         key,
-        body: visualFile.buffer,
+        body: getUploadedFileBody(visualFile),
+        contentLength: visualFile.size,
         filename: visualFile.originalname,
         contentType: visualFile.mimetype,
       });
