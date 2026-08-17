@@ -28,6 +28,14 @@ test("허용된 오디오 파일 형식을 검증한다", () => {
     false,
   );
   assert.equal(
+    isAllowedAudioFile({
+      originalname: "rain.mp3",
+      mimetype: "audio/mpeg",
+      size: AUDIO_FILE_MAX_BYTES,
+    }),
+    true,
+  );
+  assert.equal(
     isAllowedAudioFile({ originalname: "rain.mp3", mimetype: "audio/mpeg", size: AUDIO_FILE_MAX_BYTES + 1 }),
     false,
   );

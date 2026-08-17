@@ -39,7 +39,7 @@ export class AudioUploadController extends Controller {
   @Response<ApiErrorResponse>(500, "Internal Server Error")
   public async uploadAudio(
     @Request() request: ExpressRequest,
-    /** 업로드할 오디오 파일. mp3, wav, m4a, aac, ogg, flac 형식을 지원합니다. */
+    /** 업로드할 오디오 파일. 최대 20MB이며 mp3, wav, m4a, aac, ogg, flac 형식을 지원합니다. */
     @UploadedFile() audioFile: Express.Multer.File,
     /** 오디오 제목. 1자 이상 50자 이하입니다. */
     @FormField() audioTitle: string,

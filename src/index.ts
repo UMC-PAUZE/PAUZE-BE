@@ -5,7 +5,7 @@ import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
-import { MulterError } from "multer";
+import multer, { MulterError } from "multer";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
 import fs from "fs";
@@ -24,6 +24,7 @@ import {
   AUDIO_CODES,
   AUDIO_MESSAGES,
 } from "./modules/audio/errors/audio.errors.js";
+import { AUDIO_FILE_MAX_BYTES } from "./modules/audio/utils/audio-file.util.js";
 import {
   VISUAL_CODES,
   VISUAL_MESSAGES,
@@ -78,7 +79,9 @@ const router = express.Router();
 router.use(authenticate);
 router.get("/auth/email/availability", availabilityLimiter);
 router.get("/auth/nickname/availability", availabilityLimiter);
-RegisterRoutes(router);
+RegisterRoutes(router, {
+  multer: multer({ limits: { fileSize: AUDIO_FILE_MAX_BYTES } }),
+});
 app.use("/api", router);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
