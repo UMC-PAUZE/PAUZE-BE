@@ -11,7 +11,6 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/email",
   "/auth/nickname",
   "/auth/link",
-  "/visual-guides",
 ];
 
 const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts"];
@@ -22,8 +21,23 @@ function matchesPathPrefix(path: string, prefixes: string[]): boolean {
   );
 }
 
-function isPublicPath(path: string): boolean {
-  return matchesPathPrefix(path, PUBLIC_PATH_PREFIXES);
+function isPublicGuideFileRequest(method: string, path: string): boolean {
+  return (
+    method === "GET" &&
+    [
+      "/visual-guides/file",
+      "/visual-guides/file/",
+      "/breathe-guides/file",
+      "/breathe-guides/file/",
+    ].includes(path)
+  );
+}
+
+function isPublicPath(method: string, path: string): boolean {
+  return (
+    matchesPathPrefix(path, PUBLIC_PATH_PREFIXES) ||
+    isPublicGuideFileRequest(method, path)
+  );
 }
 
 function isOptionalAuthPath(path: string): boolean {
@@ -65,7 +79,7 @@ export function authenticate(
   res: Response,
   next: NextFunction
 ): void {
-  if (isPublicPath(req.path)) {
+  if (isPublicPath(req.method, req.path)) {
     next();
     return;
   }

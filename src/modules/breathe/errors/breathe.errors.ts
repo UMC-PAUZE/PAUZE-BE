@@ -1,0 +1,15 @@
+export const BREATHE_CODES = {
+  GET_BREATHE_GUIDE_FILE_SUCCESS: "BREATHE_GUIDE_FILE_SUCCESS",
+  UPLOAD_SUCCESS: "BREATHE_GUIDE_UPLOAD_SUCCESS",
+  BREATHE_GUIDE_NOT_FOUND: "BREATHE_GUIDE_NOT_FOUND_404",
+  BAD_REQUEST: "BAD_REQUEST_400",
+  UPLOAD_FAILED: "BREATHE_GUIDE_UPLOAD_FAILED_500",
+} as const;
+
+export const BREATHE_MESSAGES = {
+  GET_BREATHE_GUIDE_FILE_SUCCESS: "호흡 가이드 파일 조회에 성공했습니다.",
+  UPLOAD_SUCCESS: "호흡 가이드가 등록되었습니다.",
+  BREATHE_GUIDE_NOT_FOUND: "해당 호흡 가이드를 찾을 수 없습니다.",
+  BAD_REQUEST: "잘못된 요청 파라미터 형식입니다.",
+  UPLOAD_FAILED: "호흡 가이드 등록에 실패했습니다. 다시 시도해주세요.",
+} as const;

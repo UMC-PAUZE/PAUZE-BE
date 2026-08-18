@@ -152,3 +152,37 @@ test("Visual DB 저장 실패 시 이전 객체는 유지하고 새 S3 객체만
   );
   assert.deepEqual(deletedKeys, ["visual-guides/test.mp3"]);
 });
+
+test("Visual DB 저장과 새 S3 객체 삭제가 실패하면 정리 작업을 등록한다", async () => {
+  const cleanupKeys: string[] = [];
+  const repository = lockedRepository({
+    async findCurrent() {
+      return null;
+    },
+    async saveCurrent() {
+      throw new Error("DB failed");
+    },
+    async enqueueCleanup(key: string) {
+      cleanupKeys.push(key);
+    },
+  });
+  const storage: VisualObjectStorage = {
+    buildKey: () => "visual-guides/orphaned.mp3",
+    async upload(params) {
+      return { key: params.key, url: `https://cdn.test/${params.key}` };
+    },
+    async delete() {
+      throw new Error("S3 delete failed");
+    },
+  };
+  const service = new VisualGuideUploadService(repository, storage);
+
+  await assert.rejects(
+    service.upload({ visualFile }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === VISUAL_CODES.UPLOAD_FAILED &&
+      error.statusCode === 500,
+  );
+  assert.deepEqual(cleanupKeys, ["visual-guides/orphaned.mp3"]);
+});

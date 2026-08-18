@@ -31,6 +31,10 @@ import {
   VISUAL_CODES,
   VISUAL_MESSAGES,
 } from "./modules/visual/errors/visual.errors.js";
+import {
+  BREATHE_CODES,
+  BREATHE_MESSAGES,
+} from "./modules/breathe/errors/breathe.errors.js";
 import { startS3CleanupWorker } from "./common/services/s3-cleanup.worker.js";
 
 dotenv.config();
@@ -112,17 +116,22 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   const requestPath = req.originalUrl.split("?", 1)[0] ?? req.path;
   const isAudioUpload = requestPath === "/api/audio-guides/upload";
   const isVisualUpload = requestPath === "/api/visual-guides/upload";
+  const isBreatheUpload = requestPath === "/api/breathe-guides/upload";
   const appErr = isMulterFileTooLarge
     ? new AppError({
         code: isAudioUpload
           ? AUDIO_CODES.AUDIO_FILE_INVALID
           : isVisualUpload
             ? VISUAL_CODES.BAD_REQUEST
+            : isBreatheUpload
+              ? BREATHE_CODES.BAD_REQUEST
             : USER_CODES.PROFILE_INVALID,
         message: isAudioUpload
           ? AUDIO_MESSAGES.AUDIO_FILE_INVALID
           : isVisualUpload
             ? VISUAL_MESSAGES.BAD_REQUEST
+            : isBreatheUpload
+              ? BREATHE_MESSAGES.BAD_REQUEST
             : USER_MESSAGES.PROFILE_INVALID,
         statusCode: 400,
       })
