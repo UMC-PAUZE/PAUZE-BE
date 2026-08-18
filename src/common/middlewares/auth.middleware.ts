@@ -12,6 +12,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth/nickname",
   "/auth/link",
   "/visual-guides",
+  "/breathe-guides",
 ];
 
 const OPTIONAL_AUTH_PATH_PREFIXES = ["/curation-posts"];
