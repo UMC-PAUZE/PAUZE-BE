@@ -129,3 +129,29 @@ test("DB 저장 실패 시 새 S3 객체를 삭제한다", async () => {
   );
   assert.deepEqual(deletedKeys, ["breathe-guides/test.mp3"]);
 });
+
+test("DB 저장과 새 S3 객체 삭제가 실패하면 정리 작업을 등록한다", async () => {
+  const cleanupKeys: string[] = [];
+  const repository = lockedRepository({
+    async findCurrent() { return null; },
+    async saveCurrent() { throw new Error("DB failed"); },
+    async enqueueCleanup(key: string) { cleanupKeys.push(key); },
+  });
+  const storage: BreatheObjectStorage = {
+    buildKey: () => "breathe-guides/orphaned.mp3",
+    async upload(params) {
+      return { key: params.key, url: `https://cdn.test/${params.key}` };
+    },
+    async delete() { throw new Error("S3 delete failed"); },
+  };
+  const service = new BreatheGuideUploadService(repository, storage);
+
+  await assert.rejects(
+    service.upload({ breatheFile }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === BREATHE_CODES.UPLOAD_FAILED &&
+      error.statusCode === 500,
+  );
+  assert.deepEqual(cleanupKeys, ["breathe-guides/orphaned.mp3"]);
+});

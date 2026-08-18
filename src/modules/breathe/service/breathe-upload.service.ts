@@ -87,8 +87,19 @@ export class BreatheGuideUploadService {
       if (uploadedKey) {
         try {
           await this.storage.delete(uploadedKey);
-        } catch {
-          // best-effort rollback, matching visual guide handling
+        } catch (deleteError) {
+          try {
+            await this.repository.enqueueCleanup(uploadedKey);
+          } catch (enqueueError) {
+            console.error(
+              "[BreatheGuide] orphaned S3 object cleanup registration failed",
+              {
+                objectKey: uploadedKey,
+                deleteError,
+                enqueueError,
+              },
+            );
+          }
         }
       }
       if (error instanceof AppError) throw error;
