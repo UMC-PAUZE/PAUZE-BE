@@ -87,8 +87,19 @@ export class VisualGuideUploadService {
       if (uploadedKey) {
         try {
           await this.storage.delete(uploadedKey);
-        } catch {
-          // best-effort rollback, matching profile image handling
+        } catch (deleteError) {
+          try {
+            await this.repository.enqueueCleanup(uploadedKey);
+          } catch (enqueueError) {
+            console.error(
+              "[VisualGuide] orphaned S3 object cleanup registration failed",
+              {
+                objectKey: uploadedKey,
+                deleteError,
+                enqueueError,
+              },
+            );
+          }
         }
       }
       if (error instanceof AppError) throw error;
