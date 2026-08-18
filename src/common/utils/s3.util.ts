@@ -81,6 +81,11 @@ export function buildVisualKey(originalFilename: string): string {
   return `visual-guides/${randomUUID()}${ext}`;
 }
 
+export function buildBreatheKey(originalFilename: string): string {
+  const ext = path.extname(originalFilename).toLowerCase();
+  return `breathe-guides/${randomUUID()}${ext}`;
+}
+
 export function getObjectUrl(key: string): string {
   const base = requireEnv("S3_PUBLIC_BASE_URL").replace(/\/+$/, "");
   const normalizedKey = key.replace(/^\/+/, "");
